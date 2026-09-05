@@ -204,13 +204,20 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.neutral,
-        elevation: 0,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neutral, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.neutral),
         title: const Text(
           'KẾT THÚC PHIÊN ĐO',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             fontFamily: 'BeVietnamPro',
+            color: AppColors.neutral,
+            letterSpacing: 0.3,
           ),
         ),
         centerTitle: true,

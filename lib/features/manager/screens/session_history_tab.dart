@@ -256,8 +256,9 @@ class _MiniMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro'),
         ),
+        const SizedBox(height: 2),
         Text(
           value,
           style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', color: AppColors.neutral),

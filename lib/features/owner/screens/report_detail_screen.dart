@@ -65,13 +65,20 @@ class _ReportDetailScreenState extends ConsumerState<ReportDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.neutral,
-        elevation: 0,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.neutral, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.neutral),
         title: const Text(
           'BÁO CÁO PHIÊN ĐO',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.w800,
             fontFamily: 'BeVietnamPro',
+            color: AppColors.neutral,
+            letterSpacing: 0.3,
           ),
         ),
         centerTitle: true,
@@ -756,15 +763,15 @@ class _MetricSummaryItem extends StatelessWidget {
             fontSize: 12,
             fontWeight: FontWeight.w800,
             fontFamily: 'BeVietnamPro',
-            color: AppColors.textSecondary,
+            color: AppColors.neutral,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           countStr,
           style: const TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
             fontFamily: 'BeVietnamPro',
             color: AppColors.neutral,
           ),
@@ -772,8 +779,9 @@ class _MetricSummaryItem extends StatelessWidget {
         Text(
           timesStr,
           style: const TextStyle(
-            fontSize: 11.5,
-            color: AppColors.textDisabled,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
             fontFamily: 'BeVietnamPro',
           ),
         ),
@@ -790,8 +798,9 @@ class _MetricSummaryItem extends StatelessWidget {
         Text(
           unit,
           style: const TextStyle(
-            fontSize: 10.5,
-            color: AppColors.textSecondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            color: AppColors.neutral,
             fontFamily: 'BeVietnamPro',
           ),
         ),
@@ -879,9 +888,10 @@ class _CategorySection extends StatelessWidget {
                             ? 'Mã: ${m.orderCode ?? ''}'
                             : '${m.quantity} ${category.label.toLowerCase()}',
                         style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           fontSize: 13.5,
                           fontFamily: 'BeVietnamPro',
+                          color: AppColors.neutral,
                         ),
                       ),
                     ),

@@ -460,7 +460,7 @@ class _ReportStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro'),
         ),
         Text(
           avg,
@@ -468,7 +468,7 @@ class _ReportStat extends StatelessWidget {
         ),
         Text(
           total,
-          style: const TextStyle(fontSize: 10.5, color: AppColors.textDisabled, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
         ),
       ],
     );

@@ -462,7 +462,7 @@ class _MiniStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro')),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro')),
         const SizedBox(height: 2),
         Text(val, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.neutral, fontFamily: 'BeVietnamPro')),
       ],
