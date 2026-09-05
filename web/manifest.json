@@ -1,0 +1,35 @@
+{
+    "name": "Khuyến Mãi Trạm",
+    "short_name": "Khuyến Mãi",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#CB2D2E",
+    "theme_color": "#CB2D2E",
+    "description": "Ứng dụng quản lý khuyến mãi và tích điểm khách hàng - Hệ sinh thái Trạm",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

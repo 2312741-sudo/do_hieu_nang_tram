@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Hàm kiểm tra user đã đăng nhập
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 2. Bảo mật bảng users: Tài khoản nào chỉ được phép đọc/ghi dữ liệu của chính tài khoản đó
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 3. Bảo mật bảng stores (Cửa hàng) và mọi dữ liệu bên trong (Chấm công, Lịch làm, Tạm ứng...)
+    match /stores/{storeId} {
+      // Bất kỳ user nào đã đăng nhập đều có thể tạo cửa hàng mới
+      allow create: if isSignedIn();
+      
+      // Người dùng đã đăng nhập có thể đọc thông tin cửa hàng (cần thiết cho App khi join store)
+      allow read, update, delete: if isSignedIn();
+      
+      // Cấp quyền cho các tập con bên trong cửa hàng (attendances, schedules, production_tasks, v.v...)
+      match /{document=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+    
+    // 4. BẮT BUỘC: Quy tắc dành riêng cho truy vấn quét (collectionGroup)
+    // Để Web App có thể quét tất cả cửa hàng mà tài khoản này tham gia để hiển thị
+    match /{path=**}/members/{memberId} {
+      // Chỉ cho phép user tìm kiếm danh sách thành viên nếu userId đó chính là họ
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    // 5. KHUYẾN MÃI TRẠM: Khách hàng, lịch sử tích điểm và cửa hàng
+    match /kmt_customers/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /kmt_point_history/{docId} {
+      allow read, write: if isSignedIn();
+    }
+    match /kmt_stores/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 6. ĐO HIỆU NĂNG TRẠM: Phiên đo, lần đo và báo cáo hiệu năng
+    match /performance_sessions/{sessionId} {
+      allow read, write: if isSignedIn();
+
+      match /measurements/{measurementId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    match /performance_reports/{reportId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
