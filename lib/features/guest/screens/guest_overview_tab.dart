@@ -77,6 +77,7 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
             'Vui lòng chọn Quản lý đứng ca',
             style: TextStyle(fontFamily: 'BeVietnamPro'),
           ),
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
@@ -117,6 +118,7 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
             'Đã đạt tối đa 20 lần đo cho mục ${category.label}.',
             style: const TextStyle(fontFamily: 'BeVietnamPro'),
           ),
+          backgroundColor: AppColors.danger,
         ),
       );
       return;
@@ -266,6 +268,7 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                               err,
                               style: const TextStyle(fontFamily: 'BeVietnamPro'),
                             ),
+                            backgroundColor: AppColors.danger,
                           ),
                         );
                       }
@@ -340,6 +343,121 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
               fontFamily: 'BeVietnamPro',
               fontSize: 14,
               color: AppColors.white.withOpacity(0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveSessionBanner(GuestSessionModel session) {
+    final timeFmt = DateFormat('HH:mm');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF22876D), Color(0xFF16594B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A6B5A).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PHIÊN ĐO ĐANG HOẠT ĐỘNG',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'BeVietnamPro',
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Bắt đầu lúc: ${timeFmt.format(session.startedAt)}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: Color(0xFF4ADE80), size: 8),
+                    SizedBox(width: 4),
+                    Text(
+                      'Live',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: () {
+              context.push('/guest-end-session');
+            },
+            icon: const Icon(Icons.stop_circle_outlined, size: 20, color: AppColors.primary),
+            label: const Text(
+              'KẾT THÚC PHIÊN ĐO',
+              style: TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontWeight: FontWeight.w800,
+                fontSize: 14.5,
+                color: AppColors.primary,
+                letterSpacing: 0.3,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.primary,
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 2,
             ),
           ),
         ],
@@ -487,50 +605,10 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          GuestPersonnelSelector(
-                            selectedManagerIndex: session.managerOnDutyIndex,
-                            selectedEmployeeIndexes: session.employeeIndexes,
-                            onManagerChanged: (_) {},
-                            onEmployeesChanged: (_) {},
-                            isReadOnly: true,
-                          ),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'TỔNG QUAN PHIÊN ĐO',
-                            style: TextStyle(
-                              fontFamily: 'BeVietnamPro',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textSecondary,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _buildKpiCard(
-                            'Nước',
-                            Icons.local_cafe_rounded,
-                            const Color(0xFF0284C7),
-                            measurements
-                                .where((m) => m.category == PerformanceCategory.drink)
-                                .toList(),
-                          ),
-                          _buildKpiCard(
-                            'Bánh',
-                            Icons.cake_rounded,
-                            const Color(0xFFD97706),
-                            measurements
-                                .where((m) => m.category == PerformanceCategory.cake)
-                                .toList(),
-                          ),
-                          _buildKpiCard(
-                            'Đơn hàng',
-                            Icons.receipt_long_rounded,
-                            const Color(0xFF1C4E6B),
-                            measurements
-                                .where((m) => m.category == PerformanceCategory.order)
-                                .toList(),
-                          ),
-                          const SizedBox(height: 20),
+                          // 1. Prominent Active Session Banner with End Session CTA
+                          _buildActiveSessionBanner(session),
+
+                          // 2. Quick Measurement Action Buttons
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
@@ -619,30 +697,79 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(
-                                color: AppColors.primary,
-                                width: 2,
-                              ),
+                          const SizedBox(height: 16),
+
+                          // 3. Personnel on duty (Locked)
+                          GuestPersonnelSelector(
+                            selectedManagerIndex: session.managerOnDutyIndex,
+                            selectedEmployeeIndexes: session.employeeIndexes,
+                            onManagerChanged: (_) {},
+                            onEmployeesChanged: (_) {},
+                            isReadOnly: true,
+                          ),
+                          const SizedBox(height: 20),
+
+                          // 4. KPI Summary
+                          const Text(
+                            'TỔNG QUAN PHIÊN ĐO',
+                            style: TextStyle(
+                              fontFamily: 'BeVietnamPro',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildKpiCard(
+                            'Nước',
+                            Icons.local_cafe_rounded,
+                            const Color(0xFF0284C7),
+                            measurements
+                                .where((m) => m.category == PerformanceCategory.drink)
+                                .toList(),
+                          ),
+                          _buildKpiCard(
+                            'Bánh',
+                            Icons.cake_rounded,
+                            const Color(0xFFD97706),
+                            measurements
+                                .where((m) => m.category == PerformanceCategory.cake)
+                                .toList(),
+                          ),
+                          _buildKpiCard(
+                            'Đơn hàng',
+                            Icons.receipt_long_rounded,
+                            const Color(0xFF1C4E6B),
+                            measurements
+                                .where((m) => m.category == PerformanceCategory.order)
+                                .toList(),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // 5. Bottom End Session CTA
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: AppColors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 2,
                             ),
-                            onPressed: () {
-                              context.push('/guest-end-session');
-                            },
-                            child: const Text(
-                              'KẾT THÚC PHIÊN',
+                            icon: const Icon(Icons.stop_circle_outlined, size: 20),
+                            label: const Text(
+                              'KẾT THÚC PHIÊN ĐO',
                               style: TextStyle(
                                 fontFamily: 'BeVietnamPro',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
+                            onPressed: () {
+                              context.push('/guest-end-session');
+                            },
                           ),
                           const SizedBox(height: 24),
                         ],
