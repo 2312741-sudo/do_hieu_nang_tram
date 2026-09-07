@@ -39,7 +39,7 @@ class AppRoutes {
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: AppRoutes.welcome,
+    initialLocation: AppRoutes.home,
     debugLogDiagnostics: false,
     routes: [
       // Welcome is now the entry point

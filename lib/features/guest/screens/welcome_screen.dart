@@ -173,6 +173,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
                         height: 56,
                         child: OutlinedButton(
                           onPressed: () {
+                            ref.read(isGuestModeProvider.notifier).state = false;
                             context.go('/login');
                           },
                           style: OutlinedButton.styleFrom(

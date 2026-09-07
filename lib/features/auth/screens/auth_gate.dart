@@ -4,7 +4,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/access_denied_card.dart';
 import '../../../models/member_model.dart';
 import '../providers/auth_provider.dart';
-import 'login_screen.dart';
+import '../../guest/providers/guest_providers.dart';
+import '../../guest/screens/welcome_screen.dart';
+import '../../guest/screens/guest_main_screen.dart';
 import '../../manager/screens/manager_main_screen.dart';
 import '../../owner/screens/owner_main_screen.dart';
 
@@ -27,7 +29,11 @@ class AuthGate extends ConsumerWidget {
       ),
       data: (user) {
         if (user == null) {
-          return const LoginScreen();
+          final isGuest = ref.watch(isGuestModeProvider);
+          if (isGuest) {
+            return const GuestMainScreen();
+          }
+          return const WelcomeScreen();
         }
 
         // User is logged in: Check member role in current store

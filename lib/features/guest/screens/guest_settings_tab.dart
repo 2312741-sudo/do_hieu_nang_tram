@@ -60,7 +60,10 @@ class GuestSettingsTab extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        onTap: () => context.go('/login'),
+                        onTap: () {
+                          ref.read(isGuestModeProvider.notifier).state = false;
+                          context.go('/login');
+                        },
                       ),
                       const Divider(height: 1, color: AppColors.border),
                       ListTile(

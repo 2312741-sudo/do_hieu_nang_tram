@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/loading_overlay.dart';
 import '../providers/auth_provider.dart';
+import '../../guest/providers/guest_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -40,6 +41,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      if (mounted) {
+        ref.read(isGuestModeProvider.notifier).state = false;
+        context.go('/');
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String errorMsg;
@@ -77,6 +82,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithGoogle();
+      if (mounted) {
+        ref.read(isGuestModeProvider.notifier).state = false;
+        context.go('/');
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       if (e.code == 'cancelled') return;
@@ -105,6 +114,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await ref.read(authRepositoryProvider).signInWithApple();
+      if (mounted) {
+        ref.read(isGuestModeProvider.notifier).state = false;
+        context.go('/');
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       if (e.code == 'cancelled') return;
