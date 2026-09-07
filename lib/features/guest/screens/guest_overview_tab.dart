@@ -745,32 +745,6 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                                 .where((m) => m.category == PerformanceCategory.order)
                                 .toList(),
                           ),
-                          const SizedBox(height: 20),
-
-                          // 5. Bottom End Session CTA
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 2,
-                            ),
-                            icon: const Icon(Icons.stop_circle_outlined, size: 20),
-                            label: const Text(
-                              'KẾT THÚC PHIÊN ĐO',
-                              style: TextStyle(
-                                fontFamily: 'BeVietnamPro',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            onPressed: () {
-                              context.push('/guest-end-session');
-                            },
-                          ),
                           const SizedBox(height: 24),
                         ],
                       ),
