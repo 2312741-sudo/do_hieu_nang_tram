@@ -96,6 +96,87 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
     }
   }
 
+  Future<void> _confirmDeleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.danger),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Xóa tài khoản',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Hành động này sẽ xóa vĩnh viễn tài khoản và toàn bộ dữ liệu cá nhân của bạn khỏi hệ thống. Bạn sẽ không thể khôi phục lại tài khoản này.\n\nBạn có chắc chắn muốn xóa tài khoản vĩnh viễn?',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: const Text('Xóa vĩnh viễn'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete == true && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: AppColors.danger),
+        ),
+      );
+
+      try {
+        await ref.read(authRepositoryProvider).deleteAccount();
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // pop loading
+          Navigator.pop(context); // pop bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tài khoản đã được xóa thành công.'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop(); // pop loading
+          String errorMessage = 'Không thể xóa tài khoản: $e';
+          if (e.toString().contains('requires-recent-login')) {
+            errorMessage = 'Vì lý do bảo mật, vui lòng đăng nhập lại trước khi xóa tài khoản.';
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: AppColors.danger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider).valueOrNull;
@@ -432,6 +513,26 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                       ),
                     ),
                   ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Delete Account Button (App Store Guideline 5.1.1(v))
+              Center(
+                child: TextButton.icon(
+                  onPressed: _confirmDeleteAccount,
+                  icon: const Icon(Icons.delete_forever_rounded, size: 18, color: Colors.grey),
+                  label: const Text(
+                    'Xóa tài khoản vĩnh viễn',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'BeVietnamPro',
+                      color: Colors.grey,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
               ),
             ],

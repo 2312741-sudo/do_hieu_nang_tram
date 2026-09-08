@@ -372,4 +372,16 @@ class AuthRepository {
   Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final uid = user.uid;
+
+    try {
+      await _firestore.collection('users').doc(uid).delete();
+    } catch (_) {}
+
+    await user.delete();
+  }
 }
