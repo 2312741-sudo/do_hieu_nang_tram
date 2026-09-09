@@ -11,11 +11,17 @@ import '../../reports/screens/staff_leaderboard_screen.dart';
 import '../../session/providers/timer_service.dart';
 import 'report_detail_screen.dart';
 import 'store_performance_settings_screen.dart';
+import '../widgets/delete_measurement_data_dialog.dart';
 
 class OwnerOverviewTab extends ConsumerWidget {
   final VoidCallback onNavigateToReports;
+  final VoidCallback? onNavigateToMeasurement;
 
-  const OwnerOverviewTab({super.key, required this.onNavigateToReports});
+  const OwnerOverviewTab({
+    super.key,
+    required this.onNavigateToReports,
+    this.onNavigateToMeasurement,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,6 +64,81 @@ class OwnerOverviewTab extends ConsumerWidget {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // CTA Card: Vào Ca Đo / Đo Hiệu Năng
+                      InkWell(
+                        onTap: () {
+                          onNavigateToMeasurement?.call();
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFC8102E), Color(0xFF8B0000)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'VÀO CA ĐO HIỆU NĂNG',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        fontFamily: 'BeVietnamPro',
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Bấm giờ Nước, Bánh, Đơn hàng & Quản lý ca',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontFamily: 'BeVietnamPro',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
                       // Quick Action Cards
                       Row(
                         children: [
@@ -178,6 +259,68 @@ class OwnerOverviewTab extends ConsumerWidget {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Action Card: Dọn dẹp & Xóa dữ liệu đo
+                      InkWell(
+                        onTap: () => DeleteMeasurementDataDialog.show(context),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(7),
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.delete_sweep_rounded,
+                                  color: AppColors.danger,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Xóa dữ liệu đo lường',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontFamily: 'BeVietnamPro',
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.danger,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'Lọc theo Tuần, Tháng, Khoảng thời gian hoặc Tất cả',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontFamily: 'BeVietnamPro',
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.danger,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 20),
 

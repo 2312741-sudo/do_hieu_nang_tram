@@ -107,15 +107,15 @@ final storeMembersProvider = StreamProvider<List<MemberModel>>((ref) {
   return ref.watch(authRepositoryProvider).watchStoreMembers(storeId);
 });
 
-/// Danh sách Quản lý của cửa hàng (dành cho ô chọn Quản lý đứng ca - Single select)
+/// Danh sách Quản lý / Chủ quán của cửa hàng (dành cho ô chọn Quản lý đứng ca - Single select)
 final storeManagersProvider = Provider<List<MemberModel>>((ref) {
   final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
-  return members.where((m) => m.role.isManager && m.isActive).toList();
+  return members.where((m) => (m.role.isManager || m.role.isOwner) && m.isActive).toList();
 });
 
 /// Danh sách Nhân sự trong ca (dành cho ô chọn Nhân viên trong ca - Multi select)
-/// ĐÃ CẬP NHẬT THEO YÊU CẦU: Hiển thị cả Nhân viên VÀ Quản lý trong ca
+/// Hiển thị cả Nhân viên, Quản lý và Chủ cửa hàng trong ca
 final storeShiftStaffProvider = Provider<List<MemberModel>>((ref) {
   final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
-  return members.where((m) => (m.role.isEmployee || m.role.isManager) && m.isActive).toList();
+  return members.where((m) => (m.role.isEmployee || m.role.isManager || m.role.isOwner) && m.isActive).toList();
 });

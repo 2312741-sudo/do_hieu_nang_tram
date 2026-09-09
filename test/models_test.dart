@@ -268,6 +268,85 @@ void main() {
       expect(deserializedReport.incidents.length, 1);
       expect(deserializedReport.incidents.first.category, 'Pha chế / Nước');
     });
+
+    test('Owner role is included in shift leader and measurement candidates', () {
+      final owner = MemberModel(
+        userId: 'owner_1',
+        name: 'Chủ Quán Duy',
+        role: UserRole.owner,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        baseMonthlySalary: 0,
+        baseHourlyRate: 0,
+        standardHoursPerMonth: 208,
+        joinedAt: DateTime.now(),
+      );
+      final manager = MemberModel(
+        userId: 'mgr_1',
+        name: 'Quản Lý Thắng',
+        role: UserRole.manager1,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.fulltime,
+        baseMonthlySalary: 0,
+        baseHourlyRate: 0,
+        standardHoursPerMonth: 208,
+        joinedAt: DateTime.now(),
+      );
+      final employee = MemberModel(
+        userId: 'emp_1',
+        name: 'Nhân Viên Tiến',
+        role: UserRole.employee,
+        status: MemberStatus.active,
+        employeeType: EmployeeType.parttime,
+        baseMonthlySalary: 0,
+        baseHourlyRate: 0,
+        standardHoursPerMonth: 208,
+        joinedAt: DateTime.now(),
+      );
+
+      final allMembers = [owner, manager, employee];
+
+      // Shift leaders filter: (isManager || isOwner)
+      final shiftLeaders = allMembers.where((m) => (m.role.isManager || m.role.isOwner) && m.isActive).toList();
+      expect(shiftLeaders.length, 2);
+      expect(shiftLeaders.map((m) => m.userId), containsAll(['owner_1', 'mgr_1']));
+
+      // Shift staff filter: (isEmployee || isManager || isOwner)
+      final shiftStaff = allMembers.where((m) => (m.role.isEmployee || m.role.isManager || m.role.isOwner) && m.isActive).toList();
+      expect(shiftStaff.length, 3);
+      expect(shiftStaff.map((m) => m.userId), containsAll(['owner_1', 'mgr_1', 'emp_1']));
+    });
+
+    test('Timeframe calculation for deletion matches week, month and range bounds', () {
+      final now = DateTime(2026, 9, 9, 15, 30); // Wednesday
+      // Monday of this week: Sept 7th
+      final monday = now.subtract(Duration(days: now.weekday - 1));
+      final sunday = monday.add(const Duration(days: 6));
+      final weekStart = DateTime(monday.year, monday.month, monday.day, 0, 0, 0);
+      final weekEnd = DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
+
+      expect(weekStart.day, 7);
+      expect(weekEnd.day, 13);
+
+      final testSessionInside = DateTime(2026, 9, 8, 10, 0); // Tuesday
+      final testSessionOutside = DateTime(2026, 9, 1, 10, 0); // Last week
+
+      bool isInside(DateTime d, DateTime s, DateTime e) =>
+          d.isAfter(s.subtract(const Duration(milliseconds: 1))) &&
+          d.isBefore(e.add(const Duration(milliseconds: 1)));
+
+      expect(isInside(testSessionInside, weekStart, weekEnd), isTrue);
+      expect(isInside(testSessionOutside, weekStart, weekEnd), isFalse);
+
+      // Month bounds
+      final monthStart = DateTime(now.year, now.month, 1, 0, 0, 0);
+      final lastDay = DateTime(now.year, now.month + 1, 0).day;
+      final monthEnd = DateTime(now.year, now.month, lastDay, 23, 59, 59);
+
+      expect(monthStart.day, 1);
+      expect(monthEnd.day, 30); // September has 30 days
+      expect(isInside(testSessionOutside, monthStart, monthEnd), isTrue);
+    });
   });
 }
 

@@ -9,6 +9,7 @@ import '../../reports/screens/staff_leaderboard_screen.dart';
 import '../../session/providers/timer_service.dart';
 import 'report_detail_screen.dart';
 import 'store_performance_settings_screen.dart';
+import '../widgets/delete_measurement_data_dialog.dart';
 
 class OwnerReportsTab extends ConsumerStatefulWidget {
   const OwnerReportsTab({super.key});
@@ -55,6 +56,11 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_rounded, color: AppColors.danger),
+            tooltip: 'Xóa dữ liệu đo lường',
+            onPressed: () => DeleteMeasurementDataDialog.show(context),
+          ),
           IconButton(
             icon: const Icon(Icons.tune_rounded, color: AppColors.neutral),
             tooltip: 'Cài đặt tiêu chuẩn & biểu mẫu',

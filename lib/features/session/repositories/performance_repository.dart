@@ -195,4 +195,85 @@ class PerformanceRepository {
         .snapshots()
         .map((snap) => snap.docs.length);
   }
+
+  /// Xóa dữ liệu đo lường (sessions, subcollection measurements, và reports)
+  /// Có thể lọc theo storeId và khoảng thời gian (startDate, endDate) hoặc deleteAll = true.
+  Future<Map<String, int>> deletePerformanceData({
+    required String? storeId,
+    DateTime? startDate,
+    DateTime? endDate,
+    bool deleteAll = false,
+  }) async {
+    int deletedSessions = 0;
+    int deletedMeasurements = 0;
+    int deletedReports = 0;
+
+    // 1. Query sessions
+    Query<Map<String, dynamic>> sessionQuery = _sessionsCol;
+    if (storeId != null && storeId.isNotEmpty && storeId != 'all') {
+      sessionQuery = sessionQuery.where('storeId', isEqualTo: storeId);
+    }
+    final sessionSnap = await sessionQuery.get();
+
+    for (final doc in sessionSnap.docs) {
+      final data = doc.data();
+      DateTime? sessionDate;
+      if (data['startedAt'] is Timestamp) {
+        sessionDate = (data['startedAt'] as Timestamp).toDate();
+      } else if (data['createdAt'] is Timestamp) {
+        sessionDate = (data['createdAt'] as Timestamp).toDate();
+      }
+
+      bool shouldDelete = deleteAll;
+      if (!deleteAll && sessionDate != null && startDate != null && endDate != null) {
+        shouldDelete = sessionDate.isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
+            sessionDate.isBefore(endDate.add(const Duration(milliseconds: 1)));
+      }
+
+      if (shouldDelete) {
+        // Delete subcollection measurements
+        final mSnap = await doc.reference.collection('measurements').get();
+        for (final mDoc in mSnap.docs) {
+          await mDoc.reference.delete();
+          deletedMeasurements++;
+        }
+        await doc.reference.delete();
+        deletedSessions++;
+      }
+    }
+
+    // 2. Query reports
+    Query<Map<String, dynamic>> reportQuery = _reportsCol;
+    if (storeId != null && storeId.isNotEmpty && storeId != 'all') {
+      reportQuery = reportQuery.where('storeId', isEqualTo: storeId);
+    }
+    final reportSnap = await reportQuery.get();
+
+    for (final doc in reportSnap.docs) {
+      final data = doc.data();
+      DateTime? reportDate;
+      if (data['startedAt'] is Timestamp) {
+        reportDate = (data['startedAt'] as Timestamp).toDate();
+      } else if (data['createdAt'] is Timestamp) {
+        reportDate = (data['createdAt'] as Timestamp).toDate();
+      }
+
+      bool shouldDelete = deleteAll;
+      if (!deleteAll && reportDate != null && startDate != null && endDate != null) {
+        shouldDelete = reportDate.isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
+            reportDate.isBefore(endDate.add(const Duration(milliseconds: 1)));
+      }
+
+      if (shouldDelete) {
+        await doc.reference.delete();
+        deletedReports++;
+      }
+    }
+
+    return {
+      'sessions': deletedSessions,
+      'measurements': deletedMeasurements,
+      'reports': deletedReports,
+    };
+  }
 }

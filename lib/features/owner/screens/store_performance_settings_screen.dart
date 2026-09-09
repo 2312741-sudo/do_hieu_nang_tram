@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/performance_calculator.dart';
 import '../../../models/store_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../widgets/delete_measurement_data_dialog.dart';
 
 class StorePerformanceSettingsScreen extends ConsumerStatefulWidget {
   const StorePerformanceSettingsScreen({super.key});
@@ -629,6 +630,89 @@ class _StorePerformanceSettingsScreenState
                         letterSpacing: 0.5,
                       ),
                     ),
+            ),
+            const SizedBox(height: 24),
+
+            // Danger Zone: Quản lý & Xóa dữ liệu đo
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.delete_sweep_rounded, color: AppColors.danger, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'QUẢN LÝ DỮ LIỆU ĐO LƯỜNG',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'BeVietnamPro',
+                                color: AppColors.danger,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Dọn dẹp phiên đo & báo cáo theo thời gian',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontFamily: 'BeVietnamPro',
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Cho phép xóa các ca đo và báo cáo hiệu năng cũ theo Tuần, Tháng, Khoảng thời gian cụ thể hoặc Toàn bộ dữ liệu của cửa hàng.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontFamily: 'BeVietnamPro',
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton.icon(
+                    onPressed: () => DeleteMeasurementDataDialog.show(context),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text(
+                      'XÓA DỮ LIỆU ĐO THEO BỘ LỌC',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'BeVietnamPro',
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 30),
           ],
