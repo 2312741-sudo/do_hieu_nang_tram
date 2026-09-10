@@ -95,7 +95,7 @@ class GuestSettingsTab extends ConsumerWidget {
                           showAboutDialog(
                             context: context,
                             applicationName: 'Đo Hiệu Năng Trạm',
-                            applicationVersion: '1.0.0',
+                            applicationVersion: '1.0.1',
                             applicationIcon: const Icon(Icons.speed, size: 48, color: AppColors.primary),
                             children: [
                               const Text(
@@ -115,7 +115,7 @@ class GuestSettingsTab extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.all(24.0),
             child: Text(
-              'Phiên bản 1.0.0',
+              'Phiên bản 1.0.1',
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 color: AppColors.textSecondary,
