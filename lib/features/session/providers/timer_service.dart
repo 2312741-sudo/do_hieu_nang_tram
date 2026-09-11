@@ -5,11 +5,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_session_model.dart';
+import '../../../models/schedule_model.dart';
+import '../../../core/utils/schedule_helper.dart';
 import '../repositories/performance_repository.dart';
 import '../../auth/providers/auth_provider.dart';
 
 final performanceRepositoryProvider = Provider<PerformanceRepository>((ref) {
   return PerformanceRepository();
+});
+
+/// Weekly schedule stream for the current active store
+final currentWeekScheduleProvider = StreamProvider<ScheduleModel?>((ref) {
+  final storeId = ref.watch(currentStoreIdProvider);
+  if (storeId == null || storeId.isEmpty) return Stream.value(null);
+  final weekStart = ScheduleHelper.getWeekStartString();
+  return ref.watch(performanceRepositoryProvider).watchWeekSchedule(storeId, weekStart);
 });
 
 /// Active session stream for the current active store

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/performance_session_model.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_report_model.dart';
+import '../../../models/schedule_model.dart';
 
 class PerformanceRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -276,4 +277,37 @@ class PerformanceRepository {
       'reports': deletedReports,
     };
   }
+
+  // ---------- SCHEDULES (CHAM CONG READ-ONLY) ----------
+
+  /// Đọc dữ liệu lịch làm việc theo tuần từ Firestore (/stores/{storeId}/schedules/{weekStart})
+  Future<ScheduleModel?> getWeekSchedule(String storeId, String weekStart) async {
+    try {
+      final doc = await _firestore
+          .collection('stores')
+          .doc(storeId)
+          .collection('schedules')
+          .doc(weekStart)
+          .get();
+      if (!doc.exists || doc.data() == null) return null;
+      return ScheduleModel.fromFirestore(doc);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Theo dõi realtime lịch làm việc theo tuần
+  Stream<ScheduleModel?> watchWeekSchedule(String storeId, String weekStart) {
+    return _firestore
+        .collection('stores')
+        .doc(storeId)
+        .collection('schedules')
+        .doc(weekStart)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return ScheduleModel.fromFirestore(doc);
+    });
+  }
 }
+
