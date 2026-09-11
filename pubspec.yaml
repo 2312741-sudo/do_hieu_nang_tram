@@ -1,7 +1,7 @@
 name: do_hieu_nang_tram
 description: Ứng dụng Đo Hiệu Năng Trạm - Module đo lường thời gian pha chế & xử lý đơn hàng trong hệ sinh thái Trạm
 publish_to: 'none'
-version: 1.0.1+5
+version: 1.0.2+6
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -41,6 +41,7 @@ dependencies:
   uuid: ^4.4.2
   google_sign_in: ^6.2.1
   sign_in_with_apple: ^6.1.3
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/performance_calculator.dart';
 import '../../../models/measurement_model.dart';
@@ -57,6 +59,60 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
 
     setState(() {});
     return isValid;
+  }
+
+  Future<void> _shareShiftSummary({
+    required String storeName,
+    required DateTime date,
+    required String reporterName,
+    required String managerOnDutyName,
+    required List<String> employeeNames,
+    required int drinkQty,
+    required int drinkAvg,
+    required int drinkStd,
+    required int cakeQty,
+    required int cakeAvg,
+    required int cakeStd,
+    required int orderCount,
+    required int orderAvg,
+    required int orderStd,
+    required int incidentCount,
+    required List<PerformanceIncidentModel> incidents,
+  }) async {
+    HapticFeedback.lightImpact();
+    final summaryText = PerformanceCalculator.generateShiftSummaryText(
+      storeName: storeName,
+      date: date,
+      reporterName: reporterName,
+      managerOnDutyName: managerOnDutyName,
+      employeeNames: employeeNames,
+      drinkQty: drinkQty,
+      drinkAvg: drinkAvg,
+      drinkStd: drinkStd,
+      cakeQty: cakeQty,
+      cakeAvg: cakeAvg,
+      cakeStd: cakeStd,
+      orderCount: orderCount,
+      orderAvg: orderAvg,
+      orderStd: orderStd,
+      incidentCount: incidentCount,
+      incidentSummaries: incidents.map((i) => '${i.category}: ${i.description}').toList(),
+    );
+
+    try {
+      await Share.share(summaryText, subject: 'Báo cáo hiệu năng ca làm việc - $storeName');
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: summaryText));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã sao chép tóm tắt ca vào bộ nhớ tạm để dán vào Zalo.'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _submitReport(
@@ -197,6 +253,8 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
     final timeFmt = DateFormat('HH:mm');
     final now = DateTime.now();
     final store = ref.watch(currentStoreProvider).valueOrNull;
+    final currentUser = ref.watch(currentUserProvider).valueOrNull;
+    final std = store?.performanceStandards ?? const StorePerformanceStandards();
     final criteria = store?.endSessionCriteria ?? [];
 
     return Scaffold(
@@ -738,7 +796,50 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
               ),
             ],
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
+
+            // Share Shift Summary Button
+            OutlinedButton.icon(
+              onPressed: () => _shareShiftSummary(
+                storeName: store?.name ?? widget.session.storeName,
+                date: widget.session.startedAt,
+                reporterName: currentUser?.name ?? widget.session.managerName,
+                managerOnDutyName: widget.session.managerOnDutyName.isNotEmpty
+                    ? widget.session.managerOnDutyName
+                    : widget.session.managerName,
+                employeeNames: widget.session.employeeNames,
+                drinkQty: drinkQty,
+                drinkAvg: drinkAvg,
+                drinkStd: std.drinkStandardSeconds,
+                cakeQty: cakeQty,
+                cakeAvg: cakeAvg,
+                cakeStd: std.cakeStandardSeconds,
+                orderCount: orderCount,
+                orderAvg: orderAvg,
+                orderStd: std.orderStandardSeconds,
+                incidentCount: widget.session.incidents.length,
+                incidents: widget.session.incidents,
+              ),
+              icon: const Icon(Icons.share_rounded, size: 20, color: AppColors.primary),
+              label: const Text(
+                'CHIA SẺ TÓM TẮT CA (ZALO)',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'BeVietnamPro',
+                  color: AppColors.primary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primary, width: 1.5),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                backgroundColor: AppColors.primary.withOpacity(0.04),
+              ),
+            ),
+
+            const SizedBox(height: 16),
 
             // Buttons
             Row(

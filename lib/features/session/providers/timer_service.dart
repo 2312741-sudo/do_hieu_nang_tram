@@ -89,6 +89,7 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
     required PerformanceCategory category,
     int quantity = 1,
     String? orderCode,
+    String? staffName,
   }) async {
     final session = _ref.read(activeSessionProvider).valueOrNull;
     final uid = _ref.read(currentUserIdProvider);
@@ -129,6 +130,7 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
       category: category,
       quantity: quantity < 1 ? 1 : quantity,
       orderCode: orderCode?.trim(),
+      staffName: staffName?.trim().isNotEmpty == true ? staffName!.trim() : null,
       durationSeconds: 0,
       startedAt: DateTime.now(),
       status: MeasurementStatus.running,

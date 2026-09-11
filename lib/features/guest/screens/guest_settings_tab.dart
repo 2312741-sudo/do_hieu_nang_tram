@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/screens/about_app_screen.dart';
 import '../providers/guest_providers.dart';
 
 class GuestSettingsTab extends ConsumerWidget {
@@ -76,8 +77,12 @@ class GuestSettingsTab extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                         onTap: () {
-                          // TODO: Show privacy policy
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AboutAppScreen()),
+                          );
                         },
                       ),
                       const Divider(height: 1, color: AppColors.border),
@@ -91,18 +96,11 @@ class GuestSettingsTab extends ConsumerWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
                         onTap: () {
-                          showAboutDialog(
-                            context: context,
-                            applicationName: 'Đo Hiệu Năng Trạm',
-                            applicationVersion: '1.0.1',
-                            applicationIcon: const Icon(Icons.speed, size: 48, color: AppColors.primary),
-                            children: [
-                              const Text(
-                                'Ứng dụng đo lường hiệu năng nội bộ.',
-                                style: TextStyle(fontFamily: 'BeVietnamPro'),
-                              ),
-                            ],
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AboutAppScreen()),
                           );
                         },
                       ),
@@ -115,7 +113,7 @@ class GuestSettingsTab extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.all(24.0),
             child: Text(
-              'Phiên bản 1.0.1',
+              'Phiên bản 1.0.2 (Build 6)',
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 color: AppColors.textSecondary,

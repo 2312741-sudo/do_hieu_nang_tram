@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/personnel_selector.dart';
 import '../../../core/widgets/store_account_sheet.dart';
 import '../../../models/member_model.dart';
 import '../../../models/measurement_model.dart';
+import '../../../models/performance_report_model.dart';
 import '../../../models/performance_session_model.dart';
 import '../../../models/schedule_model.dart';
 import '../../../models/store_model.dart';
@@ -92,6 +94,11 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
           });
         }
       }
+
+      // Fallback: nếu không có nhân sự từ lịch làm việc hôm nay, tự động gợi ý từ phiên đo gần nhất
+      if (_scheduledStaffCount == 0 && !_hasUserManuallyEditedPersonnel) {
+        await _loadFallbackFromLastSession(store.id);
+      }
     } catch (e) {
       debugPrint('Error loading schedule: $e');
     } finally {
@@ -99,6 +106,83 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
         setState(() => _isLoadingSchedule = false);
       }
     }
+  }
+
+  Future<void> _loadFallbackFromLastSession(String storeId) async {
+    if (_hasUserManuallyEditedPersonnel) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('performance_sessions')
+          .where('storeId', isEqualTo: storeId)
+          .orderBy('startedAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (snap.docs.isEmpty) {
+        final reportSnap = await FirebaseFirestore.instance
+            .collection('performance_reports')
+            .where('storeId', isEqualTo: storeId)
+            .orderBy('startedAt', descending: true)
+            .limit(1)
+            .get();
+        if (reportSnap.docs.isNotEmpty) {
+          final rep = PerformanceReportModel.fromFirestore(reportSnap.docs.first);
+          _applyFallbackStaff(rep.employeeNames, rep.employeeIds, rep.managerOnDutyName, rep.managerOnDutyId);
+        }
+      } else {
+        final session = PerformanceSessionModel.fromFirestore(snap.docs.first);
+        _applyFallbackStaff(session.employeeNames, session.employeeIds, session.managerOnDutyName, session.managerOnDutyId);
+      }
+    } catch (e) {
+      debugPrint('Fallback last session load error: $e');
+    }
+  }
+
+  void _applyFallbackStaff(List<String> empNames, List<String> empIds, String mgrName, String mgrId) {
+    if (!mounted || _hasUserManuallyEditedPersonnel) return;
+    final allStaff = ref.read(storeShiftStaffProvider);
+    final managers = ref.read(storeManagersProvider);
+
+    final drinkStaff = <MemberModel>[];
+    final cakeStaff = <MemberModel>[];
+    final serviceStaff = <MemberModel>[];
+
+    for (int i = 0; i < empNames.length; i++) {
+      final raw = empNames[i];
+      final id = empIds.length > i ? empIds[i] : '';
+      final member = allStaff.where((s) => s.userId == id || s.name == raw.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim()).firstOrNull;
+      if (member != null) {
+        if (raw.contains('(Nước)') || raw.contains('(dr)')) {
+          drinkStaff.add(member);
+        } else if (raw.contains('(Bánh)') || raw.contains('(ck)')) {
+          cakeStaff.add(member);
+        } else if (raw.contains('(Phục vụ)') || raw.contains('(lo)')) {
+          serviceStaff.add(member);
+        } else {
+          drinkStaff.add(member);
+        }
+      }
+    }
+
+    MemberModel? matchedMgr;
+    if (mgrId.isNotEmpty) {
+      matchedMgr = managers.where((m) => m.userId == mgrId).firstOrNull;
+    }
+    if (matchedMgr == null && mgrName.isNotEmpty) {
+      matchedMgr = managers.where((m) => m.name == mgrName).firstOrNull;
+    }
+
+    setState(() {
+      if (drinkStaff.isNotEmpty || cakeStaff.isNotEmpty || serviceStaff.isNotEmpty) {
+        _selectedDrinkStaff = drinkStaff;
+        _selectedCakeStaff = cakeStaff;
+        _selectedServiceStaff = serviceStaff;
+        _scheduledStaffCount = drinkStaff.length + cakeStaff.length + serviceStaff.length;
+      }
+      if (matchedMgr != null) {
+        _selectedManager = matchedMgr;
+      }
+    });
   }
 
   void _applyScheduleToDepartments({String? shiftId}) {

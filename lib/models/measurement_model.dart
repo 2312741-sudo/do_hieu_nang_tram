@@ -124,6 +124,7 @@ class MeasurementModel extends Equatable {
   final PerformanceCategory category;
   final int quantity;
   final String? orderCode;
+  final String? staffName;
   final int durationSeconds;
   final DateTime startedAt;
   final DateTime? pausedAt;
@@ -140,6 +141,7 @@ class MeasurementModel extends Equatable {
     required this.category,
     this.quantity = 1,
     this.orderCode,
+    this.staffName,
     this.durationSeconds = 0,
     required this.startedAt,
     this.pausedAt,
@@ -181,6 +183,7 @@ class MeasurementModel extends Equatable {
     PerformanceCategory? category,
     int? quantity,
     String? orderCode,
+    String? staffName,
     int? durationSeconds,
     DateTime? startedAt,
     DateTime? pausedAt,
@@ -197,6 +200,7 @@ class MeasurementModel extends Equatable {
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,
       orderCode: orderCode ?? this.orderCode,
+      staffName: staffName ?? this.staffName,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       startedAt: startedAt ?? this.startedAt,
       pausedAt: pausedAt ?? this.pausedAt,
@@ -216,6 +220,7 @@ class MeasurementModel extends Equatable {
       'category': category.value,
       'quantity': quantity,
       'orderCode': orderCode,
+      'staffName': staffName,
       'durationSeconds': durationSeconds,
       'startedAt': Timestamp.fromDate(startedAt),
       'pausedAt': pausedAt != null ? Timestamp.fromDate(pausedAt!) : null,
@@ -241,6 +246,7 @@ class MeasurementModel extends Equatable {
       category: PerformanceCategoryExtension.fromString(json['category'] as String?),
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       orderCode: json['orderCode'] as String?,
+      staffName: json['staffName'] as String?,
       durationSeconds: (json['durationSeconds'] as num?)?.toInt() ?? 0,
       startedAt: parseDate(json['startedAt']),
       pausedAt: json['pausedAt'] != null ? parseDate(json['pausedAt']) : null,
@@ -265,6 +271,7 @@ class MeasurementModel extends Equatable {
         category,
         quantity,
         orderCode,
+        staffName,
         durationSeconds,
         startedAt,
         pausedAt,

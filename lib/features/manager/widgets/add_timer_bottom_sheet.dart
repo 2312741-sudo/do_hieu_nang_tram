@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../models/measurement_model.dart';
+import '../../../models/performance_session_model.dart';
 import '../../session/providers/timer_service.dart';
 
 class AddTimerBottomSheet extends ConsumerStatefulWidget {
@@ -25,6 +27,7 @@ class AddTimerBottomSheet extends ConsumerStatefulWidget {
 class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
   int _quantity = 1;
   final TextEditingController _orderCodeCtrl = TextEditingController();
+  String? _selectedStaff;
   String? _errorMessage;
   bool _isLoading = false;
 
@@ -34,7 +37,38 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
     super.dispose();
   }
 
+  List<String> _getAvailableStaff(PerformanceSessionModel? session) {
+    if (session == null) return [];
+    final tag = widget.category == PerformanceCategory.drink
+        ? '(Nước)'
+        : (widget.category == PerformanceCategory.cake ? '(Bánh)' : '');
+
+    final List<String> deptStaff = [];
+    final List<String> otherStaff = [];
+
+    for (final nameWithTag in session.employeeNames) {
+      final cleanName = nameWithTag.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+      if (tag.isNotEmpty &&
+          (nameWithTag.contains(tag) ||
+              (tag == '(Nước)' && nameWithTag.contains('(dr)')) ||
+              (tag == '(Bánh)' && nameWithTag.contains('(ck)')))) {
+        deptStaff.add(cleanName);
+      } else {
+        otherStaff.add(cleanName);
+      }
+    }
+
+    if (session.managerOnDutyName.isNotEmpty) {
+      otherStaff.add(session.managerOnDutyName);
+    }
+
+    final result = <String>[...deptStaff, ...otherStaff];
+    return result.toSet().toList();
+  }
+
   Future<void> _handleStart() async {
+    HapticFeedback.lightImpact();
+
     setState(() {
       _errorMessage = null;
       _isLoading = true;
@@ -45,6 +79,7 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
       category: widget.category,
       quantity: _quantity,
       orderCode: _orderCodeCtrl.text,
+      staffName: _selectedStaff,
     );
 
     if (!mounted) return;
@@ -65,6 +100,8 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final session = ref.watch(activeSessionProvider).valueOrNull;
+    final availableStaff = _getAvailableStaff(session);
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
@@ -222,6 +259,80 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
                 ),
               ),
             ],
+          ],
+
+          if (availableStaff.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Row(
+              children: [
+                Icon(Icons.person_outline_rounded, size: 16, color: AppColors.textSecondary),
+                SizedBox(width: 6),
+                Text(
+                  'Người thực hiện (tuỳ chọn)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'BeVietnamPro',
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Cả quầy'),
+                    selected: _selectedStaff == null,
+                    onSelected: (_) => setState(() => _selectedStaff = null),
+                    selectedColor: AppColors.primary.withOpacity(0.12),
+                    backgroundColor: AppColors.surface,
+                    labelStyle: TextStyle(
+                      fontFamily: 'BeVietnamPro',
+                      fontSize: 12.5,
+                      fontWeight: _selectedStaff == null ? FontWeight.w700 : FontWeight.w500,
+                      color: _selectedStaff == null ? AppColors.primary : AppColors.neutral,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        color: _selectedStaff == null ? AppColors.primary : AppColors.border,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ...availableStaff.map((staff) {
+                    final isSelected = _selectedStaff == staff;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(staff),
+                        selected: isSelected,
+                        onSelected: (_) => setState(() {
+                          _selectedStaff = isSelected ? null : staff;
+                        }),
+                        selectedColor: AppColors.primary.withOpacity(0.12),
+                        backgroundColor: AppColors.surface,
+                        labelStyle: TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 12.5,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? AppColors.primary : AppColors.neutral,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: isSelected ? AppColors.primary : AppColors.border,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ],
 
           const SizedBox(height: 24),

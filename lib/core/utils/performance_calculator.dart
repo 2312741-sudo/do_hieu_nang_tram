@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import '../../models/measurement_model.dart';
 import '../../models/performance_report_model.dart';
 
@@ -214,6 +215,82 @@ class PerformanceCalculator {
     }
 
     return statsList;
+  }
+
+  /// Formats shift performance summary for sharing via Zalo, SMS, or Clipboard
+  static String generateShiftSummaryText({
+    required String storeName,
+    required DateTime date,
+    required String reporterName,
+    required String managerOnDutyName,
+    required List<String> employeeNames,
+    required int drinkQty,
+    required int drinkAvg,
+    required int drinkStd,
+    required int cakeQty,
+    required int cakeAvg,
+    required int cakeStd,
+    required int orderCount,
+    required int orderAvg,
+    required int orderStd,
+    required int incidentCount,
+    List<String> incidentSummaries = const [],
+  }) {
+    final df = DateFormat('dd/MM/yyyy');
+    final dateStr = df.format(date);
+
+    String statusBadge(int avg, int std, int count) {
+      if (count <= 0) return 'Chưa đo';
+      if (avg <= std) return '✅ Đạt (${avg}s ≤ ${std}s)';
+      final diff = avg - std;
+      return '⚠️ Vượt chuẩn (${avg}s > ${std}s, +${diff}s)';
+    }
+
+    final drinkStatus = statusBadge(drinkAvg, drinkStd, drinkQty);
+    final cakeStatus = statusBadge(cakeAvg, cakeStd, cakeQty);
+    final orderStatus = statusBadge(orderAvg, orderStd, orderCount);
+
+    int measuredTotal = 0;
+    int compliantTotal = 0;
+    if (drinkQty > 0) {
+      measuredTotal++;
+      if (drinkAvg <= drinkStd) compliantTotal++;
+    }
+    if (cakeQty > 0) {
+      measuredTotal++;
+      if (cakeAvg <= cakeStd) compliantTotal++;
+    }
+    if (orderCount > 0) {
+      measuredTotal++;
+      if (orderAvg <= orderStd) compliantTotal++;
+    }
+    final compliancePct = measuredTotal > 0 ? ((compliantTotal / measuredTotal) * 100).round() : 100;
+
+    final staffList = employeeNames.isNotEmpty ? employeeNames.join(', ') : 'Chưa phân công';
+
+    final buffer = StringBuffer();
+    buffer.writeln('📊 BÁO CÁO HIỆU NĂNG CA LÀM VIỆC - $storeName');
+    buffer.writeln('📅 Ngày: $dateStr');
+    buffer.writeln('👤 Người đo: $reporterName | Quản lý ca: $managerOnDutyName');
+    buffer.writeln('👥 Nhân sự ca: $staffList');
+    buffer.writeln('────────────────────');
+    buffer.writeln('⏱️ Nước: $drinkQty ly | TB: ${drinkAvg}s/ly -> $drinkStatus');
+    buffer.writeln('⏱️ Bánh: $cakeQty cái | TB: ${cakeAvg}s/cái -> $cakeStatus');
+    buffer.writeln('⏱️ Đơn hàng: $orderCount đơn | TB: ${orderAvg}s/đơn -> $orderStatus');
+    buffer.writeln('────────────────────');
+    buffer.writeln('🎯 Tỷ lệ đạt chuẩn hạng mục: $compliancePct%');
+    if (incidentCount > 0) {
+      buffer.writeln('⚠️ Sự cố ca: $incidentCount sự cố ghi nhận');
+      for (final inc in incidentSummaries) {
+        buffer.writeln('   • $inc');
+      }
+    } else {
+      buffer.writeln('✨ Không có sự cố ghi nhận trong ca');
+    }
+    buffer.writeln('────────────────────');
+    buffer.writeln('Ứng dụng Đo Hiệu Năng Trạm');
+
+    return buffer.toString();
   }
 }
 
