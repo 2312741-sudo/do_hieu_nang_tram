@@ -122,6 +122,29 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
       }
     }
 
+    // Tự động gán nhân sự bộ phận từ session nếu chưa có staffName
+    String? resolvedStaff = staffName?.trim().isNotEmpty == true ? staffName!.trim() : null;
+    if (resolvedStaff == null) {
+      final tag = category == PerformanceCategory.drink
+          ? '(Nước)'
+          : (category == PerformanceCategory.cake ? '(Bánh)' : '(Phục vụ)');
+      final altTag = category == PerformanceCategory.drink
+          ? '(dr)'
+          : (category == PerformanceCategory.cake ? '(ck)' : '(lo)');
+
+      final deptStaff = session.employeeNames
+          .where((n) => n.contains(tag) || n.toLowerCase().contains(altTag))
+          .map((n) => n.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim())
+          .where((n) => n.isNotEmpty)
+          .toList();
+
+      if (deptStaff.isNotEmpty) {
+        resolvedStaff = deptStaff.join(', ');
+      } else if (category == PerformanceCategory.order && session.managerOnDutyName.isNotEmpty) {
+        resolvedStaff = session.managerOnDutyName;
+      }
+    }
+
     final newMeasurement = MeasurementModel(
       id: _uuid.v4(),
       sessionId: session.id,
@@ -130,7 +153,7 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
       category: category,
       quantity: quantity < 1 ? 1 : quantity,
       orderCode: orderCode?.trim(),
-      staffName: staffName?.trim().isNotEmpty == true ? staffName!.trim() : null,
+      staffName: resolvedStaff,
       durationSeconds: 0,
       startedAt: DateTime.now(),
       status: MeasurementStatus.running,

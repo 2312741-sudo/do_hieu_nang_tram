@@ -27,7 +27,6 @@ class AddTimerBottomSheet extends ConsumerStatefulWidget {
 class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
   int _quantity = 1;
   final TextEditingController _orderCodeCtrl = TextEditingController();
-  String? _selectedStaff;
   String? _errorMessage;
   bool _isLoading = false;
 
@@ -37,33 +36,28 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
     super.dispose();
   }
 
-  List<String> _getAvailableStaff(PerformanceSessionModel? session) {
-    if (session == null) return [];
+  String? _getDepartmentStaffName(PerformanceSessionModel? session) {
+    if (session == null) return null;
     final tag = widget.category == PerformanceCategory.drink
         ? '(Nước)'
-        : (widget.category == PerformanceCategory.cake ? '(Bánh)' : '');
+        : (widget.category == PerformanceCategory.cake ? '(Bánh)' : '(Phục vụ)');
+    final altTag = widget.category == PerformanceCategory.drink
+        ? '(dr)'
+        : (widget.category == PerformanceCategory.cake ? '(ck)' : '(lo)');
 
-    final List<String> deptStaff = [];
-    final List<String> otherStaff = [];
+    final deptStaff = session.employeeNames
+        .where((n) => n.contains(tag) || n.toLowerCase().contains(altTag))
+        .map((n) => n.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
 
-    for (final nameWithTag in session.employeeNames) {
-      final cleanName = nameWithTag.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
-      if (tag.isNotEmpty &&
-          (nameWithTag.contains(tag) ||
-              (tag == '(Nước)' && nameWithTag.contains('(dr)')) ||
-              (tag == '(Bánh)' && nameWithTag.contains('(ck)')))) {
-        deptStaff.add(cleanName);
-      } else {
-        otherStaff.add(cleanName);
-      }
+    if (deptStaff.isNotEmpty) {
+      return deptStaff.join(', ');
     }
-
-    if (session.managerOnDutyName.isNotEmpty) {
-      otherStaff.add(session.managerOnDutyName);
+    if (widget.category == PerformanceCategory.order && session.managerOnDutyName.isNotEmpty) {
+      return session.managerOnDutyName;
     }
-
-    final result = <String>[...deptStaff, ...otherStaff];
-    return result.toSet().toList();
+    return null;
   }
 
   Future<void> _handleStart() async {
@@ -74,12 +68,15 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
       _isLoading = true;
     });
 
+    final session = ref.read(activeSessionProvider).valueOrNull;
+    final staff = _getDepartmentStaffName(session);
+
     final timerNotifier = ref.read(performanceTimerProvider.notifier);
     final error = await timerNotifier.startTimer(
       category: widget.category,
       quantity: _quantity,
       orderCode: _orderCodeCtrl.text,
-      staffName: _selectedStaff,
+      staffName: staff,
     );
 
     if (!mounted) return;
@@ -101,7 +98,7 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final session = ref.watch(activeSessionProvider).valueOrNull;
-    final availableStaff = _getAvailableStaff(session);
+    final deptStaffName = _getDepartmentStaffName(session);
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
@@ -261,75 +258,40 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
             ],
           ],
 
-          if (availableStaff.isNotEmpty) ...[
+          if (deptStaffName != null) ...[
             const SizedBox(height: 18),
-            const Row(
-              children: [
-                Icon(Icons.person_outline_rounded, size: 16, color: AppColors.textSecondary),
-                SizedBox(width: 6),
-                Text(
-                  'Người thực hiện (tuỳ chọn)',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'BeVietnamPro',
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
               child: Row(
                 children: [
-                  ChoiceChip(
-                    label: const Text('Cả quầy'),
-                    selected: _selectedStaff == null,
-                    onSelected: (_) => setState(() => _selectedStaff = null),
-                    selectedColor: AppColors.primary.withOpacity(0.12),
-                    backgroundColor: AppColors.surface,
-                    labelStyle: TextStyle(
+                  const Icon(Icons.person_rounded, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Nhân sự ${widget.category.label.toLowerCase()}: ',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'BeVietnamPro',
-                      fontSize: 12.5,
-                      fontWeight: _selectedStaff == null ? FontWeight.w700 : FontWeight.w500,
-                      color: _selectedStaff == null ? AppColors.primary : AppColors.neutral,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(
-                        color: _selectedStaff == null ? AppColors.primary : AppColors.border,
-                      ),
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ...availableStaff.map((staff) {
-                    final isSelected = _selectedStaff == staff;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(staff),
-                        selected: isSelected,
-                        onSelected: (_) => setState(() {
-                          _selectedStaff = isSelected ? null : staff;
-                        }),
-                        selectedColor: AppColors.primary.withOpacity(0.12),
-                        backgroundColor: AppColors.surface,
-                        labelStyle: TextStyle(
-                          fontFamily: 'BeVietnamPro',
-                          fontSize: 12.5,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? AppColors.primary : AppColors.neutral,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                            color: isSelected ? AppColors.primary : AppColors.border,
-                          ),
-                        ),
+                  Expanded(
+                    child: Text(
+                      deptStaffName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'BeVietnamPro',
+                        color: AppColors.neutral,
                       ),
-                    );
-                  }),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
