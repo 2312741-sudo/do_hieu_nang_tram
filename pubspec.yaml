@@ -1,7 +1,7 @@
 name: do_hieu_nang_tram
 description: Ứng dụng Đo Hiệu Năng Trạm - Module đo lường thời gian pha chế & xử lý đơn hàng trong hệ sinh thái Trạm
 publish_to: 'none'
-version: 1.0.3+8
+version: 1.0.3+10
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
