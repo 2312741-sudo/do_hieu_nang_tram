@@ -113,7 +113,7 @@ class GuestSettingsTab extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.all(24.0),
             child: Text(
-              'Phiên bản 1.0.2 (Build 6)',
+              'Phiên bản 1.0.2 (Build 7)',
               style: TextStyle(
                 fontFamily: 'BeVietnamPro',
                 color: AppColors.textSecondary,
