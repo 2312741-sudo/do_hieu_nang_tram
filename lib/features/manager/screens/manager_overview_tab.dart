@@ -307,6 +307,23 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
         createdAt: now,
       );
 
+      final existingActive = await FirebaseFirestore.instance
+          .collection('performance_sessions')
+          .where('storeId', isEqualTo: store.id)
+          .where('status', isEqualTo: 'active')
+          .get();
+      if (existingActive.docs.isNotEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cửa hàng này đã có ca đo đang mở. Bạn đã được kết nối vào ca đo chung.'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       final repo = ref.read(performanceRepositoryProvider);
       await repo.createSession(newSession);
 

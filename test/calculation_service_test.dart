@@ -1,8 +1,10 @@
+import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:do_hieu_nang_tram/core/utils/performance_calculator.dart';
 import 'package:do_hieu_nang_tram/core/utils/excel_export_service.dart';
 import 'package:do_hieu_nang_tram/models/measurement_model.dart';
 import 'package:do_hieu_nang_tram/models/performance_report_model.dart';
+import 'package:do_hieu_nang_tram/models/performance_session_model.dart';
 
 void main() {
   group('PerformanceCalculator Unit Tests', () {
@@ -231,6 +233,175 @@ void main() {
       expect(staffB.cakeEfficiencyPercent, closeTo(88.88, 0.1));
       expect(staffB.performanceRating, 'Khá');
       expect(staffB.rank, 2);
+    });
+
+    test('MeasurementModel supports multi-account measuredByName field', () {
+      final now = DateTime.now();
+      final m = MeasurementModel(
+        id: 'm_multi_1',
+        sessionId: 'ses_1',
+        storeId: 'store_1',
+        userId: 'user_account_2',
+        measuredByName: 'Quản lý Bar',
+        category: PerformanceCategory.drink,
+        quantity: 2,
+        staffName: 'Trần Văn Pha Chế',
+        durationSeconds: 150,
+        startedAt: now,
+        createdAt: now,
+      );
+
+      expect(m.measuredByName, 'Quản lý Bar');
+      final json = m.toJson();
+      expect(json['measuredByName'], 'Quản lý Bar');
+
+      final restored = MeasurementModel.fromJson(json);
+      expect(restored.measuredByName, 'Quản lý Bar');
+    });
+
+    test('ExcelExportService createPerformanceReportWorkbook builds all 6 sheets with SLA and Form Responses', () {
+      final now = DateTime.now();
+      final report = PerformanceReportModel(
+        id: 'rep_full',
+        sessionId: 'ses_full',
+        storeId: 'store_1',
+        storeName: 'Trạm Cà Phê Quận 1',
+        managerId: 'mgr_1',
+        managerName: 'Quản Lý Trưởng',
+        managerOnDutyId: 'mgr_1',
+        managerOnDutyName: 'Quản Lý Đứng Ca',
+        employeeIds: const ['emp_dr', 'emp_ck', 'emp_lo'],
+        employeeNames: const [
+          'Nguyễn Văn Nước (Nước)',
+          'Lê Thị Bánh (Bánh)',
+          'Phạm Phục Vụ (Phục vụ)',
+        ],
+        startedAt: now.subtract(const Duration(hours: 4)),
+        endedAt: now,
+        drinkTotalQuantity: 15,
+        drinkMeasurementCount: 8,
+        drinkTotalSeconds: 800,
+        drinkAverageSeconds: 100, // SLA 120s -> ĐẠT
+        cakeTotalQuantity: 10,
+        cakeMeasurementCount: 5,
+        cakeTotalSeconds: 700,
+        cakeAverageSeconds: 140, // SLA 120s -> VƯỢT CHUẨN
+        orderCount: 12,
+        orderTotalSeconds: 1920,
+        orderAverageSeconds: 160, // SLA 180s -> ĐẠT
+        status: ReportStatus.submitted,
+        createdAt: now,
+        standardSnapshot: const {
+          'drink': 120,
+          'cake': 120,
+          'order': 180,
+        },
+        formResponses: const {
+          'cleanliness': {
+            'title': 'Vệ sinh quầy bar & khu vực làm bánh',
+            'type': 'checkbox',
+            'value': true,
+          },
+          'satisfaction': {
+            'title': 'Đánh giá mức độ hài lòng vận hành ca',
+            'type': 'rating',
+            'value': 5,
+          },
+          'waste_count': {
+            'title': 'Số ly hỏng / hủy trong ca',
+            'type': 'number',
+            'value': 2,
+          },
+        },
+        incidents: [
+          PerformanceIncidentModel(
+            id: 'inc_1',
+            category: 'Kỹ thuật',
+            description: 'Máy xay cà phê bị nghẹt nhẹ 5 phút',
+            staffName: 'Nguyễn Văn Nước',
+            reportedBy: 'Quản Lý Đứng Ca',
+            timestamp: now.subtract(const Duration(hours: 2)),
+          ),
+        ],
+      );
+
+      final measurements = [
+        MeasurementModel(
+          id: 'm1',
+          sessionId: 'ses_full',
+          storeId: 'store_1',
+          userId: 'u1',
+          measuredByName: 'TK Đo Nước',
+          category: PerformanceCategory.drink,
+          quantity: 2,
+          durationSeconds: 180,
+          staffName: 'Nguyễn Văn Nước',
+          startedAt: now.subtract(const Duration(hours: 3)),
+          completedAt: now.subtract(const Duration(hours: 3, seconds: -180)),
+          status: MeasurementStatus.completed,
+          createdAt: now,
+        ),
+        MeasurementModel(
+          id: 'm2',
+          sessionId: 'ses_full',
+          storeId: 'store_1',
+          userId: 'u2',
+          measuredByName: 'TK Đo Bánh',
+          category: PerformanceCategory.cake,
+          quantity: 1,
+          durationSeconds: 140,
+          staffName: 'Lê Thị Bánh',
+          startedAt: now.subtract(const Duration(hours: 2)),
+          completedAt: now.subtract(const Duration(hours: 2, seconds: -140)),
+          status: MeasurementStatus.completed,
+          createdAt: now,
+        ),
+        MeasurementModel(
+          id: 'm3',
+          sessionId: 'ses_full',
+          storeId: 'store_1',
+          userId: 'u3',
+          measuredByName: 'TK Đo Đơn',
+          category: PerformanceCategory.order,
+          orderCode: 'ORD-999',
+          durationSeconds: 160,
+          staffName: 'Phạm Phục Vụ',
+          startedAt: now.subtract(const Duration(hours: 1)),
+          completedAt: now.subtract(const Duration(hours: 1, seconds: -160)),
+          status: MeasurementStatus.completed,
+          createdAt: now,
+        ),
+      ];
+
+      final excel = ExcelExportService.createPerformanceReportWorkbook(
+        report: report,
+        measurements: measurements,
+      );
+
+      // Verify all 6 sheets were created
+      expect(excel.sheets.containsKey('TongQuan'), isTrue);
+      expect(excel.sheets.containsKey('BaoCao_KetCa'), isTrue);
+      expect(excel.sheets.containsKey('Nuoc'), isTrue);
+      expect(excel.sheets.containsKey('Banh'), isTrue);
+      expect(excel.sheets.containsKey('DonHang'), isTrue);
+      expect(excel.sheets.containsKey('Loi_Phat_Sinh'), isTrue);
+
+      // Verify TongQuan has store name and SLA headers
+      final tongQuan = excel['TongQuan'];
+      expect(tongQuan.cell(CellIndex.indexByString('B3')).value.toString(), contains('Trạm Cà Phê'));
+
+      // Verify BaoCao_KetCa has the responses
+      final ketCa = excel['BaoCao_KetCa'];
+      expect(ketCa.rows.length, greaterThanOrEqualTo(4)); // Header + 3 responses
+
+      // Verify Nuoc has measuredByName and staffName
+      final nuocSheet = excel['Nuoc'];
+      expect(nuocSheet.rows.length, 2); // Header + 1 measurement row
+
+      // Verify bytes can be saved properly
+      final bytes = excel.save();
+      expect(bytes, isNotNull);
+      expect(bytes!.length, greaterThan(0));
     });
   });
 }

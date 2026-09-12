@@ -55,13 +55,11 @@ class ExcelExportService {
         .toUpperCase();
   }
 
-  static Future<void> exportPerformanceReport({
+  static Excel createPerformanceReportWorkbook({
     required PerformanceReportModel report,
     required List<MeasurementModel> measurements,
-    BuildContext? context,
-  }) async {
-    try {
-      final excel = Excel.createExcel();
+  }) {
+    final excel = Excel.createExcel();
 
       // Brand styling
       final headerStyle = CellStyle(
@@ -78,29 +76,83 @@ class ExcelExportService {
         fontColorHex: ExcelColor.fromHexString('#1C4E6B'),
       );
 
+      final sectionHeaderStyle = CellStyle(
+        bold: true,
+        fontSize: 11,
+        fontColorHex: ExcelColor.fromHexString('#1C4E6B'),
+      );
+
       final labelStyle = CellStyle(bold: true);
+
+      final passStyle = CellStyle(
+        fontColorHex: ExcelColor.fromHexString('#0F766E'),
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      final failStyle = CellStyle(
+        fontColorHex: ExcelColor.fromHexString('#B91C1C'),
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
+      final centerStyle = CellStyle(
+        horizontalAlign: HorizontalAlign.Center,
+      );
 
       final timeFmt = DateFormat('HH:mm');
       final dateFmt = DateFormat('dd/MM/yyyy');
-      final dateIso = DateFormat('yyyy-MM-dd').format(report.startedAt);
 
       final managerName = report.managerOnDutyName.isNotEmpty
           ? report.managerOnDutyName
           : (report.managerName.isNotEmpty ? report.managerName : 'Quản lý');
-      final staffList = report.employeeNames.isNotEmpty
-          ? report.employeeNames.join(', ')
-          : 'Không có';
+
+      final reporterName = report.managerName.isNotEmpty ? report.managerName : managerName;
+
+      final durationMinutes = report.endedAt.difference(report.startedAt).inMinutes;
+      final durationHours = durationMinutes ~/ 60;
+      final durationRemainingMins = durationMinutes % 60;
+      final durationStr = durationHours > 0
+          ? '$durationHours giờ $durationRemainingMins phút'
+          : '$durationMinutes phút';
+
+      // Standards (SLA)
+      final stdSnapshot = report.standardSnapshot;
+      final stdDrink = stdSnapshot['drink'] ?? 120;
+      final stdCake = stdSnapshot['cake'] ?? 120;
+      final stdOrder = stdSnapshot['order'] ?? 180;
+
+      // Classify staff by department
+      final drinkStaffList = <String>[];
+      final cakeStaffList = <String>[];
+      final serviceStaffList = <String>[];
+      final otherStaffList = <String>[];
+
+      for (final name in report.employeeNames) {
+        final clean = name.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
+        if (name.contains('(Nước)') || name.toLowerCase().contains('(dr)')) {
+          drinkStaffList.add(clean);
+        } else if (name.contains('(Bánh)') || name.toLowerCase().contains('(ck)')) {
+          cakeStaffList.add(clean);
+        } else if (name.contains('(Phục vụ)') || name.toLowerCase().contains('(lo)')) {
+          serviceStaffList.add(clean);
+        } else {
+          otherStaffList.add(clean);
+        }
+      }
 
       // ==========================================
-      // SHEET 1: TongQuan
+      // SHEET 1: TongQuan (Tổng quan & SLA)
       // ==========================================
       final sheet1 = excel['TongQuan'];
       excel.setDefaultSheet('TongQuan');
 
-      // Title & Metadata
-      sheet1.cell(CellIndex.indexByString('A1')).value = TextCellValue('BÁO CÁO HIỆU NĂNG PHA CHẾ & XỬ LÝ ĐƠN HÀNG');
+      // Title
+      sheet1.cell(CellIndex.indexByString('A1')).value =
+          TextCellValue('BÁO CÁO HIỆU NĂNG PHA CHẾ & XỬ LÝ ĐƠN HÀNG - TRẠM');
       sheet1.cell(CellIndex.indexByString('A1')).cellStyle = titleStyle;
 
+      // Metadata Ca làm việc
       sheet1.cell(CellIndex.indexByString('A3')).value = TextCellValue('Cửa hàng:');
       sheet1.cell(CellIndex.indexByString('A3')).cellStyle = labelStyle;
       sheet1.cell(CellIndex.indexByString('B3')).value = TextCellValue(report.storeName);
@@ -111,69 +163,308 @@ class ExcelExportService {
 
       sheet1.cell(CellIndex.indexByString('A5')).value = TextCellValue('Thời gian ca:');
       sheet1.cell(CellIndex.indexByString('A5')).cellStyle = labelStyle;
-      sheet1.cell(CellIndex.indexByString('B5')).value = TextCellValue('${timeFmt.format(report.startedAt)} - ${timeFmt.format(report.endedAt)}');
+      sheet1.cell(CellIndex.indexByString('B5')).value =
+          TextCellValue('${timeFmt.format(report.startedAt)} - ${timeFmt.format(report.endedAt)} (Thời lượng: $durationStr)');
 
       sheet1.cell(CellIndex.indexByString('A6')).value = TextCellValue('Quản lý đứng ca:');
       sheet1.cell(CellIndex.indexByString('A6')).cellStyle = labelStyle;
       sheet1.cell(CellIndex.indexByString('B6')).value = TextCellValue(managerName);
 
-      sheet1.cell(CellIndex.indexByString('A7')).value = TextCellValue('Nhân viên trong ca:');
+      sheet1.cell(CellIndex.indexByString('A7')).value = TextCellValue('Người lập báo cáo:');
       sheet1.cell(CellIndex.indexByString('A7')).cellStyle = labelStyle;
-      sheet1.cell(CellIndex.indexByString('B7')).value = TextCellValue(staffList);
+      sheet1.cell(CellIndex.indexByString('B7')).value = TextCellValue(reporterName);
 
-      // Table Header
-      final headers1 = ['Hạng mục', 'Số lần đo', 'Số lượng', 'Tổng thời gian', 'Thời gian trung bình'];
-      for (int c = 0; c < headers1.length; c++) {
-        final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 9));
-        cell.value = TextCellValue(headers1[c]);
+      sheet1.cell(CellIndex.indexByString('A8')).value = TextCellValue('Thời điểm nộp:');
+      sheet1.cell(CellIndex.indexByString('A8')).cellStyle = labelStyle;
+      sheet1.cell(CellIndex.indexByString('B8')).value = TextCellValue(
+        report.submittedAt != null ? DateFormat('dd/MM/yyyy HH:mm').format(report.submittedAt!) : '--',
+      );
+
+      // Section 1: Phân bổ nhân sự bộ phận
+      sheet1.cell(CellIndex.indexByString('A10')).value =
+          TextCellValue('I. PHÂN BỔ NHÂN SỰ THEO BỘ PHẬN TRONG CA');
+      sheet1.cell(CellIndex.indexByString('A10')).cellStyle = sectionHeaderStyle;
+
+      final staffHeaders = ['Bộ phận', 'Nhân sự đảm nhiệm', 'Nhiệm vụ chính trong ca'];
+      for (int c = 0; c < staffHeaders.length; c++) {
+        final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 11));
+        cell.value = TextCellValue(staffHeaders[c]);
         cell.cellStyle = headerStyle;
       }
 
-      // Rows
-      final summaryRows = [
+      final staffRows = [
+        ['Quản lý đứng ca', managerName, 'Điều hành, phân công & giám sát vận hành ca'],
+        [
+          'Pha chế (Nước - dr)',
+          drinkStaffList.isNotEmpty ? drinkStaffList.join(', ') : 'Không phân bổ',
+          'Pha chế đồ uống theo tiêu chuẩn SLA',
+        ],
+        [
+          'Làm bánh (Bánh - ck)',
+          cakeStaffList.isNotEmpty ? cakeStaffList.join(', ') : 'Không phân bổ',
+          'Nướng, trang trí & ra bánh theo tiêu chuẩn SLA',
+        ],
+        [
+          'Phục vụ & Line order (lo)',
+          serviceStaffList.isNotEmpty
+              ? serviceStaffList.join(', ')
+              : (otherStaffList.isNotEmpty ? otherStaffList.join(', ') : 'Không phân bổ'),
+          'Thu ngân, kiểm tra đơn hàng & giao đồ cho khách',
+        ],
+      ];
+
+      for (int r = 0; r < staffRows.length; r++) {
+        for (int c = 0; c < staffRows[r].length; c++) {
+          final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 12 + r));
+          cell.value = TextCellValue(staffRows[r][c]);
+          if (c == 0) cell.cellStyle = labelStyle;
+        }
+      }
+
+      // Section 2: Tổng hợp hiệu năng & Đối chiếu SLA
+      sheet1.cell(CellIndex.indexByString('A17')).value =
+          TextCellValue('II. BẢNG TỔNG HỢP HIỆU NĂNG & ĐỐI CHIẾU TIÊU CHUẨN (SLA)');
+      sheet1.cell(CellIndex.indexByString('A17')).cellStyle = sectionHeaderStyle;
+
+      final kpiHeaders = [
+        'Hạng mục',
+        'Số lượt đo',
+        'Tổng số lượng',
+        'Tổng thời gian',
+        'TB thực tế / SP',
+        'Tiêu chuẩn (SLA)',
+        'Chênh lệch (+/-)',
+        'Hiệu suất (%)',
+        'Đánh giá kết quả',
+      ];
+      for (int c = 0; c < kpiHeaders.length; c++) {
+        final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 18));
+        cell.value = TextCellValue(kpiHeaders[c]);
+        cell.cellStyle = headerStyle;
+      }
+
+      // Calculations for Drink
+      final diffDrink = report.drinkAverageSeconds - stdDrink;
+      final diffDrinkStr = report.drinkMeasurementCount == 0
+          ? '-'
+          : (diffDrink <= 0 ? '-${-diffDrink}s (Nhanh hơn)' : '+$diffDrink s (Chậm hơn)');
+      final effDrinkStr = report.drinkAverageSeconds > 0
+          ? '${(stdDrink / report.drinkAverageSeconds * 100).toStringAsFixed(1)}%'
+          : '-';
+      final isDrinkPass = report.drinkAverageSeconds <= stdDrink;
+      final evalDrinkStr = report.drinkMeasurementCount == 0
+          ? 'Không đo'
+          : (isDrinkPass ? 'ĐẠT CHUẨN' : 'VƯỢT CHUẨN (+${diffDrink}s)');
+
+      // Calculations for Cake
+      final diffCake = report.cakeAverageSeconds - stdCake;
+      final diffCakeStr = report.cakeMeasurementCount == 0
+          ? '-'
+          : (diffCake <= 0 ? '-${-diffCake}s (Nhanh hơn)' : '+$diffCake s (Chậm hơn)');
+      final effCakeStr = report.cakeAverageSeconds > 0
+          ? '${(stdCake / report.cakeAverageSeconds * 100).toStringAsFixed(1)}%'
+          : '-';
+      final isCakePass = report.cakeAverageSeconds <= stdCake;
+      final evalCakeStr = report.cakeMeasurementCount == 0
+          ? 'Không đo'
+          : (isCakePass ? 'ĐẠT CHUẨN' : 'VƯỢT CHUẨN (+${diffCake}s)');
+
+      // Calculations for Order
+      final diffOrder = report.orderAverageSeconds - stdOrder;
+      final diffOrderStr = report.orderCount == 0
+          ? '-'
+          : (diffOrder <= 0 ? '-${-diffOrder}s (Nhanh hơn)' : '+$diffOrder s (Chậm hơn)');
+      final effOrderStr = report.orderAverageSeconds > 0
+          ? '${(stdOrder / report.orderAverageSeconds * 100).toStringAsFixed(1)}%'
+          : '-';
+      final isOrderPass = report.orderAverageSeconds <= stdOrder;
+      final evalOrderStr = report.orderCount == 0
+          ? 'Không đo'
+          : (isOrderPass ? 'ĐẠT CHUẨN' : 'VƯỢT CHUẨN (+${diffOrder}s)');
+
+      final kpiRows = [
         [
           'Nước',
           report.drinkMeasurementCount,
-          report.drinkTotalQuantity,
+          '${report.drinkTotalQuantity} ly',
           PerformanceCalculator.formatSeconds(report.drinkTotalSeconds),
-          '${PerformanceCalculator.formatSeconds(report.drinkAverageSeconds)} / nước',
+          '${PerformanceCalculator.formatSeconds(report.drinkAverageSeconds)} / ly',
+          '${stdDrink}s / ly',
+          diffDrinkStr,
+          effDrinkStr,
+          evalDrinkStr,
         ],
         [
           'Bánh',
           report.cakeMeasurementCount,
-          report.cakeTotalQuantity,
+          '${report.cakeTotalQuantity} bánh',
           PerformanceCalculator.formatSeconds(report.cakeTotalSeconds),
           '${PerformanceCalculator.formatSeconds(report.cakeAverageSeconds)} / bánh',
+          '${stdCake}s / bánh',
+          diffCakeStr,
+          effCakeStr,
+          evalCakeStr,
         ],
         [
           'Đơn hàng',
           report.orderCount,
-          report.orderCount,
+          '${report.orderCount} đơn',
           PerformanceCalculator.formatSeconds(report.orderTotalSeconds),
           '${PerformanceCalculator.formatSeconds(report.orderAverageSeconds)} / đơn',
+          '${stdOrder}s / đơn',
+          diffOrderStr,
+          effOrderStr,
+          evalOrderStr,
         ],
       ];
 
-      for (int r = 0; r < summaryRows.length; r++) {
-        for (int c = 0; c < summaryRows[r].length; c++) {
-          final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 10 + r));
-          final val = summaryRows[r][c];
+      for (int r = 0; r < kpiRows.length; r++) {
+        final row = kpiRows[r];
+        for (int c = 0; c < row.length; c++) {
+          final cell = sheet1.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 19 + r));
+          final val = row[c];
           if (val is int) {
             cell.value = IntCellValue(val);
+            cell.cellStyle = centerStyle;
           } else {
             cell.value = TextCellValue(val.toString());
+            if (c == 0) {
+              cell.cellStyle = labelStyle;
+            } else if (c == 8) {
+              final isPass = r == 0 ? isDrinkPass : (r == 1 ? isCakePass : isOrderPass);
+              final count = r == 0 ? report.drinkMeasurementCount : (r == 1 ? report.cakeMeasurementCount : report.orderCount);
+              cell.cellStyle = count == 0 ? centerStyle : (isPass ? passStyle : failStyle);
+            } else if (c >= 1 && c <= 7) {
+              cell.cellStyle = centerStyle;
+            }
           }
         }
       }
 
-      sheet1.setColumnWidth(0, 18);
+      // Section 3: Tóm tắt vận hành trong ca
+      sheet1.cell(CellIndex.indexByString('A23')).value = TextCellValue('III. TỔNG KẾT VẬN HÀNH TRONG CA');
+      sheet1.cell(CellIndex.indexByString('A23')).cellStyle = sectionHeaderStyle;
+
+      sheet1.cell(CellIndex.indexByString('A24')).value = TextCellValue('Sự cố & lỗi phát sinh:');
+      sheet1.cell(CellIndex.indexByString('A24')).cellStyle = labelStyle;
+      sheet1.cell(CellIndex.indexByString('B24')).value = TextCellValue(
+        report.incidents.isNotEmpty
+            ? '${report.incidents.length} sự cố ghi nhận (Xem chi tiết tại Sheet Loi_Phat_Sinh)'
+            : '0 sự cố (Ca làm việc vận hành trơn tru)',
+      );
+
+      sheet1.cell(CellIndex.indexByString('A25')).value = TextCellValue('Báo cáo kết thúc ca:');
+      sheet1.cell(CellIndex.indexByString('A25')).cellStyle = labelStyle;
+      sheet1.cell(CellIndex.indexByString('B25')).value = TextCellValue(
+        report.formResponses.isNotEmpty
+            ? 'Đã hoàn tất (${report.formResponses.length} mục kiểm tra - Xem chi tiết tại Sheet BaoCao_KetCa)'
+            : 'Không có câu hỏi khảo sát kết ca',
+      );
+
+      sheet1.setColumnWidth(0, 20);
       sheet1.setColumnWidth(1, 14);
-      sheet1.setColumnWidth(2, 14);
-      sheet1.setColumnWidth(3, 18);
-      sheet1.setColumnWidth(4, 26);
+      sheet1.setColumnWidth(2, 16);
+      sheet1.setColumnWidth(3, 16);
+      sheet1.setColumnWidth(4, 20);
+      sheet1.setColumnWidth(5, 18);
+      sheet1.setColumnWidth(6, 22);
+      sheet1.setColumnWidth(7, 16);
+      sheet1.setColumnWidth(8, 24);
 
       // ==========================================
-      // SHEET 2: Nuoc
+      // SHEET 2: BaoCao_KetCa (Form Checklist & Responses)
+      // ==========================================
+      if (report.formResponses.isNotEmpty) {
+        final sheetKetCa = excel['BaoCao_KetCa'];
+        final headersKetCa = [
+          'STT',
+          'Tiêu chí kiểm tra / Khảo sát kết ca',
+          'Phân loại câu hỏi',
+          'Câu trả lời / Kết quả ghi nhận',
+          'Đánh giá trạng thái',
+        ];
+        for (int c = 0; c < headersKetCa.length; c++) {
+          final cell = sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
+          cell.value = TextCellValue(headersKetCa[c]);
+          cell.cellStyle = headerStyle;
+        }
+
+        int rowIndex = 1;
+        report.formResponses.forEach((key, rawValue) {
+          String title = key;
+          String type = 'text';
+          dynamic val;
+
+          if (rawValue is Map) {
+            title = rawValue['title']?.toString() ?? key;
+            type = rawValue['type']?.toString() ?? 'text';
+            val = rawValue['value'];
+          } else {
+            val = rawValue;
+          }
+
+          String displayVal = '--';
+          String evalStr = 'Ghi nhận';
+          bool isPass = true;
+
+          if (type == 'checkbox') {
+            final b = val == true || val == 'true';
+            displayVal = b ? 'ĐÃ HOÀN THÀNH' : 'CHƯA HOÀN THÀNH';
+            evalStr = b ? 'ĐẠT' : 'CHƯA ĐẠT';
+            isPass = b;
+          } else if (type == 'rating') {
+            final numVal = (val is num) ? val.toInt() : int.tryParse(val.toString()) ?? 0;
+            displayVal = '$numVal / 5 ⭐';
+            if (numVal >= 4) {
+              evalStr = 'TỐT';
+              isPass = true;
+            } else if (numVal == 3) {
+              evalStr = 'TRUNG BÌNH';
+              isPass = true;
+            } else {
+              evalStr = 'CẦN CẢI THIỆN';
+              isPass = false;
+            }
+          } else if (type == 'number') {
+            displayVal = val?.toString() ?? '0';
+            evalStr = 'ĐẠT';
+            isPass = true;
+          } else {
+            displayVal = val?.toString() ?? '';
+            evalStr = 'GHI NHẬN';
+            isPass = true;
+          }
+
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = IntCellValue(rowIndex);
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).cellStyle = centerStyle;
+
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(title);
+
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = TextCellValue(
+            type == 'checkbox'
+                ? 'Xác nhận hoàn tất'
+                : (type == 'rating' ? 'Đánh giá điểm sao' : (type == 'number' ? 'Số liệu kiểm kê' : 'Văn bản phản hồi')),
+          );
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).cellStyle = centerStyle;
+
+          sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = TextCellValue(displayVal);
+
+          final evalCell = sheetKetCa.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex));
+          evalCell.value = TextCellValue(evalStr);
+          evalCell.cellStyle = isPass ? passStyle : failStyle;
+
+          rowIndex++;
+        });
+
+        sheetKetCa.setColumnWidth(0, 8);
+        sheetKetCa.setColumnWidth(1, 40);
+        sheetKetCa.setColumnWidth(2, 22);
+        sheetKetCa.setColumnWidth(3, 30);
+        sheetKetCa.setColumnWidth(4, 20);
+      }
+
+      // ==========================================
+      // SHEET 3: Nuoc (Chi tiết đo Nước)
       // ==========================================
       final sheet2 = excel['Nuoc'];
       final drinkMeasurements = measurements
@@ -182,14 +473,19 @@ class ExcelExportService {
 
       final headers2 = [
         'STT',
+        'Lần đo',
         'Ngày',
         'Giờ bắt đầu',
         'Giờ kết thúc',
-        'Quản lý đứng ca',
-        'Cửa hàng',
-        'Số lượng nước',
-        'Tổng thời gian',
-        'Thời gian / nước',
+        'Số lượng ly',
+        'Tổng thời gian (s)',
+        'Định dạng',
+        'Thời gian / 1 ly',
+        'Chuẩn SLA (s)',
+        'Chênh lệch (+/-s)',
+        'Đánh giá SLA',
+        'Nhân viên pha chế',
+        'Người thực hiện đo',
       ];
       for (int c = 0; c < headers2.length; c++) {
         final cell = sheet2.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
@@ -199,27 +495,68 @@ class ExcelExportService {
 
       for (int i = 0; i < drinkMeasurements.length; i++) {
         final m = drinkMeasurements[i];
-        final row = [
-          IntCellValue(i + 1),
-          TextCellValue(dateFmt.format(m.startedAt)),
-          TextCellValue(timeFmt.format(m.startedAt)),
-          TextCellValue(m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--'),
-          TextCellValue(managerName),
-          TextCellValue(report.storeName),
-          IntCellValue(m.quantity),
-          TextCellValue(PerformanceCalculator.formatSeconds(m.durationSeconds)),
-          TextCellValue(PerformanceCalculator.formatSeconds(m.secondsPerItem)),
+        final diff = m.secondsPerItem - stdDrink;
+        final isPass = m.secondsPerItem <= stdDrink;
+        final diffStr = diff <= 0 ? '-${-diff}s' : '+$diff s';
+        final evalStr = isPass ? 'ĐẠT' : 'VƯỢT CHUẨN (+$diff s)';
+        final staff = (m.staffName != null && m.staffName!.isNotEmpty)
+            ? m.staffName!
+            : (drinkStaffList.isNotEmpty ? drinkStaffList.join(', ') : '--');
+        final measuredBy = (m.measuredByName != null && m.measuredByName!.isNotEmpty)
+            ? m.measuredByName!
+            : managerName;
+
+        final rowValues = [
+          i + 1,
+          'Lần ${i + 1}',
+          dateFmt.format(m.startedAt),
+          timeFmt.format(m.startedAt),
+          m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--',
+          m.quantity,
+          m.durationSeconds,
+          PerformanceCalculator.formatSeconds(m.durationSeconds),
+          PerformanceCalculator.formatSeconds(m.secondsPerItem),
+          '${stdDrink}s',
+          diffStr,
+          evalStr,
+          staff,
+          measuredBy,
         ];
-        for (int c = 0; c < row.length; c++) {
-          sheet2.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1)).value = row[c];
+
+        for (int c = 0; c < rowValues.length; c++) {
+          final cell = sheet2.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1));
+          final val = rowValues[c];
+          if (val is int) {
+            cell.value = IntCellValue(val);
+            cell.cellStyle = centerStyle;
+          } else {
+            cell.value = TextCellValue(val.toString());
+            if (c == 11) {
+              cell.cellStyle = isPass ? passStyle : failStyle;
+            } else if (c == 1 || c == 2 || c == 3 || c == 4 || c == 7 || c == 8 || c == 9 || c == 10) {
+              cell.cellStyle = centerStyle;
+            }
+          }
         }
       }
-      for (int c = 0; c < headers2.length; c++) {
-        sheet2.setColumnWidth(c, 16);
-      }
+
+      sheet2.setColumnWidth(0, 8);
+      sheet2.setColumnWidth(1, 12);
+      sheet2.setColumnWidth(2, 14);
+      sheet2.setColumnWidth(3, 14);
+      sheet2.setColumnWidth(4, 14);
+      sheet2.setColumnWidth(5, 14);
+      sheet2.setColumnWidth(6, 18);
+      sheet2.setColumnWidth(7, 14);
+      sheet2.setColumnWidth(8, 16);
+      sheet2.setColumnWidth(9, 14);
+      sheet2.setColumnWidth(10, 16);
+      sheet2.setColumnWidth(11, 22);
+      sheet2.setColumnWidth(12, 22);
+      sheet2.setColumnWidth(13, 22);
 
       // ==========================================
-      // SHEET 3: Banh
+      // SHEET 4: Banh (Chi tiết đo Bánh)
       // ==========================================
       final sheet3 = excel['Banh'];
       final cakeMeasurements = measurements
@@ -228,14 +565,19 @@ class ExcelExportService {
 
       final headers3 = [
         'STT',
+        'Lần đo',
         'Ngày',
         'Giờ bắt đầu',
         'Giờ kết thúc',
-        'Quản lý đứng ca',
-        'Cửa hàng',
-        'Số bánh',
-        'Tổng thời gian',
-        'Thời gian / bánh',
+        'Số lượng bánh',
+        'Tổng thời gian (s)',
+        'Định dạng',
+        'Thời gian / 1 bánh',
+        'Chuẩn SLA (s)',
+        'Chênh lệch (+/-s)',
+        'Đánh giá SLA',
+        'Nhân viên làm bánh',
+        'Người thực hiện đo',
       ];
       for (int c = 0; c < headers3.length; c++) {
         final cell = sheet3.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
@@ -245,27 +587,68 @@ class ExcelExportService {
 
       for (int i = 0; i < cakeMeasurements.length; i++) {
         final m = cakeMeasurements[i];
-        final row = [
-          IntCellValue(i + 1),
-          TextCellValue(dateFmt.format(m.startedAt)),
-          TextCellValue(timeFmt.format(m.startedAt)),
-          TextCellValue(m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--'),
-          TextCellValue(managerName),
-          TextCellValue(report.storeName),
-          IntCellValue(m.quantity),
-          TextCellValue(PerformanceCalculator.formatSeconds(m.durationSeconds)),
-          TextCellValue(PerformanceCalculator.formatSeconds(m.secondsPerItem)),
+        final diff = m.secondsPerItem - stdCake;
+        final isPass = m.secondsPerItem <= stdCake;
+        final diffStr = diff <= 0 ? '-${-diff}s' : '+$diff s';
+        final evalStr = isPass ? 'ĐẠT' : 'VƯỢT CHUẨN (+$diff s)';
+        final staff = (m.staffName != null && m.staffName!.isNotEmpty)
+            ? m.staffName!
+            : (cakeStaffList.isNotEmpty ? cakeStaffList.join(', ') : '--');
+        final measuredBy = (m.measuredByName != null && m.measuredByName!.isNotEmpty)
+            ? m.measuredByName!
+            : managerName;
+
+        final rowValues = [
+          i + 1,
+          'Lần ${i + 1}',
+          dateFmt.format(m.startedAt),
+          timeFmt.format(m.startedAt),
+          m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--',
+          m.quantity,
+          m.durationSeconds,
+          PerformanceCalculator.formatSeconds(m.durationSeconds),
+          PerformanceCalculator.formatSeconds(m.secondsPerItem),
+          '${stdCake}s',
+          diffStr,
+          evalStr,
+          staff,
+          measuredBy,
         ];
-        for (int c = 0; c < row.length; c++) {
-          sheet3.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1)).value = row[c];
+
+        for (int c = 0; c < rowValues.length; c++) {
+          final cell = sheet3.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1));
+          final val = rowValues[c];
+          if (val is int) {
+            cell.value = IntCellValue(val);
+            cell.cellStyle = centerStyle;
+          } else {
+            cell.value = TextCellValue(val.toString());
+            if (c == 11) {
+              cell.cellStyle = isPass ? passStyle : failStyle;
+            } else if (c == 1 || c == 2 || c == 3 || c == 4 || c == 7 || c == 8 || c == 9 || c == 10) {
+              cell.cellStyle = centerStyle;
+            }
+          }
         }
       }
-      for (int c = 0; c < headers3.length; c++) {
-        sheet3.setColumnWidth(c, 16);
-      }
+
+      sheet3.setColumnWidth(0, 8);
+      sheet3.setColumnWidth(1, 12);
+      sheet3.setColumnWidth(2, 14);
+      sheet3.setColumnWidth(3, 14);
+      sheet3.setColumnWidth(4, 14);
+      sheet3.setColumnWidth(5, 14);
+      sheet3.setColumnWidth(6, 18);
+      sheet3.setColumnWidth(7, 14);
+      sheet3.setColumnWidth(8, 16);
+      sheet3.setColumnWidth(9, 14);
+      sheet3.setColumnWidth(10, 16);
+      sheet3.setColumnWidth(11, 22);
+      sheet3.setColumnWidth(12, 22);
+      sheet3.setColumnWidth(13, 22);
 
       // ==========================================
-      // SHEET 4: DonHang
+      // SHEET 5: DonHang (Chi tiết đo Đơn hàng)
       // ==========================================
       final sheet4 = excel['DonHang'];
       final orderMeasurements = measurements
@@ -274,13 +657,17 @@ class ExcelExportService {
 
       final headers4 = [
         'STT',
+        'Mã đơn hàng',
         'Ngày',
-        'Mã đơn',
         'Giờ bắt đầu',
         'Giờ kết thúc',
-        'Quản lý đứng ca',
-        'Cửa hàng',
-        'Thời gian xử lý',
+        'Thời gian xử lý (s)',
+        'Định dạng',
+        'Chuẩn SLA (s)',
+        'Chênh lệch (+/-s)',
+        'Đánh giá SLA',
+        'Nhân sự phụ trách',
+        'Người thực hiện đo',
       ];
       for (int c = 0; c < headers4.length; c++) {
         final cell = sheet4.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
@@ -290,34 +677,72 @@ class ExcelExportService {
 
       for (int i = 0; i < orderMeasurements.length; i++) {
         final m = orderMeasurements[i];
-        final row = [
-          IntCellValue(i + 1),
-          TextCellValue(dateFmt.format(m.startedAt)),
-          TextCellValue(m.orderCode ?? ''),
-          TextCellValue(timeFmt.format(m.startedAt)),
-          TextCellValue(m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--'),
-          TextCellValue(managerName),
-          TextCellValue(report.storeName),
-          TextCellValue(PerformanceCalculator.formatSeconds(m.durationSeconds)),
+        final diff = m.durationSeconds - stdOrder;
+        final isPass = m.durationSeconds <= stdOrder;
+        final diffStr = diff <= 0 ? '-${-diff}s' : '+$diff s';
+        final evalStr = isPass ? 'ĐẠT' : 'VƯỢT CHUẨN (+$diff s)';
+        final staff = (m.staffName != null && m.staffName!.isNotEmpty)
+            ? m.staffName!
+            : (serviceStaffList.isNotEmpty ? serviceStaffList.join(', ') : managerName);
+        final measuredBy = (m.measuredByName != null && m.measuredByName!.isNotEmpty)
+            ? m.measuredByName!
+            : managerName;
+
+        final rowValues = [
+          i + 1,
+          m.orderCode?.isNotEmpty == true ? m.orderCode! : 'Đơn #${i + 1}',
+          dateFmt.format(m.startedAt),
+          timeFmt.format(m.startedAt),
+          m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--',
+          m.durationSeconds,
+          PerformanceCalculator.formatSeconds(m.durationSeconds),
+          '${stdOrder}s',
+          diffStr,
+          evalStr,
+          staff,
+          measuredBy,
         ];
-        for (int c = 0; c < row.length; c++) {
-          sheet4.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1)).value = row[c];
+
+        for (int c = 0; c < rowValues.length; c++) {
+          final cell = sheet4.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1));
+          final val = rowValues[c];
+          if (val is int) {
+            cell.value = IntCellValue(val);
+            cell.cellStyle = centerStyle;
+          } else {
+            cell.value = TextCellValue(val.toString());
+            if (c == 9) {
+              cell.cellStyle = isPass ? passStyle : failStyle;
+            } else if (c == 2 || c == 3 || c == 4 || c == 6 || c == 7 || c == 8) {
+              cell.cellStyle = centerStyle;
+            }
+          }
         }
       }
-      for (int c = 0; c < headers4.length; c++) {
-        sheet4.setColumnWidth(c, 16);
-      }
+
+      sheet4.setColumnWidth(0, 8);
+      sheet4.setColumnWidth(1, 16);
+      sheet4.setColumnWidth(2, 14);
+      sheet4.setColumnWidth(3, 14);
+      sheet4.setColumnWidth(4, 14);
+      sheet4.setColumnWidth(5, 18);
+      sheet4.setColumnWidth(6, 14);
+      sheet4.setColumnWidth(7, 14);
+      sheet4.setColumnWidth(8, 16);
+      sheet4.setColumnWidth(9, 22);
+      sheet4.setColumnWidth(10, 22);
+      sheet4.setColumnWidth(11, 22);
 
       // ==========================================
-      // SHEET 5: Loi_Phat_Sinh (Incidents)
+      // SHEET 6: Loi_Phat_Sinh (Incidents)
       // ==========================================
       if (report.incidents.isNotEmpty) {
         final sheet5 = excel['Loi_Phat_Sinh'];
         final incidentHeaders = [
           'STT',
-          'Thời gian',
-          'Phân loại lỗi',
-          'Chi tiết sự cố / lỗi',
+          'Thời gian ghi nhận',
+          'Phân loại sự cố',
+          'Chi tiết sự cố / lỗi phát sinh',
           'Nhân sự liên quan',
           'Người ghi nhận',
         ];
@@ -338,13 +763,15 @@ class ExcelExportService {
             TextCellValue(inc.reportedBy),
           ];
           for (int c = 0; c < row.length; c++) {
-            sheet5.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1)).value = row[c];
+            final cell = sheet5.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1));
+            cell.value = row[c];
+            if (c == 0 || c == 1) cell.cellStyle = centerStyle;
           }
         }
         sheet5.setColumnWidth(0, 8);
-        sheet5.setColumnWidth(1, 14);
+        sheet5.setColumnWidth(1, 18);
         sheet5.setColumnWidth(2, 22);
-        sheet5.setColumnWidth(3, 40);
+        sheet5.setColumnWidth(3, 42);
         sheet5.setColumnWidth(4, 20);
         sheet5.setColumnWidth(5, 20);
       }
@@ -354,14 +781,26 @@ class ExcelExportService {
         excel.delete('Sheet1');
       }
 
-      // ==========================================
-      // SAVE & EXPORT
-      // ==========================================
+      return excel;
+    }
+
+  static Future<void> exportPerformanceReport({
+    required PerformanceReportModel report,
+    required List<MeasurementModel> measurements,
+    BuildContext? context,
+  }) async {
+    try {
+      final excel = createPerformanceReportWorkbook(
+        report: report,
+        measurements: measurements,
+      );
+
       final fileBytes = excel.save();
       if (fileBytes == null) {
         throw Exception('Không thể tạo nội dung file Excel.');
       }
 
+      final dateIso = DateFormat('yyyy-MM-dd').format(report.startedAt);
       final storeSanitized = sanitize(report.storeName);
       final fileName = 'BaoCao_HieuNang_${storeSanitized}_$dateIso.xlsx';
 

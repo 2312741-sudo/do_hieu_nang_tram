@@ -67,6 +67,7 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
   PerformanceTimerNotifier(this._ref) : super(const PerformanceTimerState()) {
     _initTicker();
     _restoreLocalTimers();
+    _listenToMeasurements();
   }
 
   void _initTicker() {
@@ -74,6 +75,15 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
     _ticker = Timer.periodic(const Duration(milliseconds: 500), (_) {
       if (state.activeTimers.any((t) => t.status == MeasurementStatus.running)) {
         state = state.copyWith(tick: state.tick + 1);
+      }
+    });
+  }
+
+  void _listenToMeasurements() {
+    _ref.listen<AsyncValue<List<MeasurementModel>>>(sessionMeasurementsProvider, (prev, next) {
+      final list = next.valueOrNull;
+      if (list != null) {
+        syncFromFirestore(list);
       }
     });
   }
@@ -145,11 +155,15 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
       }
     }
 
+    final user = _ref.read(currentUserProvider).valueOrNull;
+    final measuredByName = user?.name ?? 'Quản lý';
+
     final newMeasurement = MeasurementModel(
       id: _uuid.v4(),
       sessionId: session.id,
       storeId: storeId,
       userId: uid,
+      measuredByName: measuredByName,
       category: category,
       quantity: quantity < 1 ? 1 : quantity,
       orderCode: orderCode?.trim(),
@@ -174,10 +188,14 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
   /// Pause an active running timer
   Future<void> pauseTimer(String measurementId) async {
     final idx = state.activeTimers.indexWhere((m) => m.id == measurementId);
-    if (idx == -1) return;
-
-    final timer = state.activeTimers[idx];
-    if (timer.status != MeasurementStatus.running) return;
+    MeasurementModel? timer;
+    if (idx != -1) {
+      timer = state.activeTimers[idx];
+    } else {
+      final all = _ref.read(sessionMeasurementsProvider).valueOrNull ?? [];
+      timer = all.where((m) => m.id == measurementId).firstOrNull;
+    }
+    if (timer == null || timer.status != MeasurementStatus.running) return;
 
     final now = DateTime.now();
     final elapsed = timer.elapsedSeconds;
@@ -189,7 +207,11 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
     );
 
     final list = List<MeasurementModel>.from(state.activeTimers);
-    list[idx] = updated;
+    if (idx != -1) {
+      list[idx] = updated;
+    } else {
+      list.add(updated);
+    }
     state = state.copyWith(activeTimers: list);
 
     await _persistLocalTimers();
@@ -199,10 +221,14 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
   /// Resume a paused timer
   Future<void> resumeTimer(String measurementId) async {
     final idx = state.activeTimers.indexWhere((m) => m.id == measurementId);
-    if (idx == -1) return;
-
-    final timer = state.activeTimers[idx];
-    if (timer.status != MeasurementStatus.paused) return;
+    MeasurementModel? timer;
+    if (idx != -1) {
+      timer = state.activeTimers[idx];
+    } else {
+      final all = _ref.read(sessionMeasurementsProvider).valueOrNull ?? [];
+      timer = all.where((m) => m.id == measurementId).firstOrNull;
+    }
+    if (timer == null || timer.status != MeasurementStatus.paused) return;
 
     final now = DateTime.now();
     var addPausedSecs = 0;
@@ -218,7 +244,11 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
     );
 
     final list = List<MeasurementModel>.from(state.activeTimers);
-    list[idx] = updated;
+    if (idx != -1) {
+      list[idx] = updated;
+    } else {
+      list.add(updated);
+    }
     state = state.copyWith(activeTimers: list);
 
     await _persistLocalTimers();
@@ -228,9 +258,17 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
   /// Complete a timer
   Future<void> completeTimer(String measurementId) async {
     final idx = state.activeTimers.indexWhere((m) => m.id == measurementId);
-    if (idx == -1) return;
+    MeasurementModel? timer;
+    if (idx != -1) {
+      timer = state.activeTimers[idx];
+      final list = List<MeasurementModel>.from(state.activeTimers)..removeAt(idx);
+      state = state.copyWith(activeTimers: list);
+    } else {
+      final all = _ref.read(sessionMeasurementsProvider).valueOrNull ?? [];
+      timer = all.where((m) => m.id == measurementId).firstOrNull;
+    }
+    if (timer == null) return;
 
-    final timer = state.activeTimers[idx];
     final finalSeconds = timer.elapsedSeconds;
     final now = DateTime.now();
 
@@ -239,10 +277,6 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
       durationSeconds: finalSeconds,
       completedAt: now,
     );
-
-    // Remove from active list
-    final list = List<MeasurementModel>.from(state.activeTimers)..removeAt(idx);
-    state = state.copyWith(activeTimers: list);
 
     await _persistLocalTimers();
     await _ref.read(performanceRepositoryProvider).updateMeasurement(updated);
@@ -298,11 +332,15 @@ class PerformanceTimerNotifier extends StateNotifier<PerformanceTimerState> {
     );
   }
 
-  /// Sync active timers from Firestore when session is loaded
+  /// Sync active timers from Firestore when session is loaded or updated
   void syncFromFirestore(List<MeasurementModel> firestoreMeasurements) {
     final active = firestoreMeasurements.where((m) => m.status.isActive).toList();
-    state = state.copyWith(activeTimers: active);
-    _persistLocalTimers();
+    final currentIds = state.activeTimers.map((m) => '${m.id}_${m.status.value}_${m.totalPausedSeconds}').toSet();
+    final newIds = active.map((m) => '${m.id}_${m.status.value}_${m.totalPausedSeconds}').toSet();
+    if (currentIds.length != newIds.length || !currentIds.containsAll(newIds)) {
+      state = state.copyWith(activeTimers: active);
+      _persistLocalTimers();
+    }
   }
 
   Future<void> _persistLocalTimers() async {

@@ -26,11 +26,12 @@ class PerformanceRepository {
     return _sessionsCol
         .where('storeId', isEqualTo: storeId)
         .where('status', isEqualTo: 'active')
-        .limit(1)
         .snapshots()
         .map((snap) {
       if (snap.docs.isEmpty) return null;
-      return PerformanceSessionModel.fromFirestore(snap.docs.first);
+      final sessions = snap.docs.map((d) => PerformanceSessionModel.fromFirestore(d)).toList();
+      sessions.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      return sessions.first;
     });
   }
 

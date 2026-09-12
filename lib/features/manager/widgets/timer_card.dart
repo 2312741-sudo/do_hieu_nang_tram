@@ -86,9 +86,12 @@ class TimerCard extends ConsumerWidget {
     final staffSuffix = (timer.staffName != null && timer.staffName!.isNotEmpty)
         ? ' • 👤 ${timer.staffName}'
         : '';
+    final measuredSuffix = (timer.measuredByName != null && timer.measuredByName!.isNotEmpty)
+        ? ' • ⏱️ Đo: ${timer.measuredByName}'
+        : '';
     final subtitle = timer.category == PerformanceCategory.order
-        ? '1 đơn hàng • Chuẩn ${standardSeconds}s$staffSuffix'
-        : '${timer.quantity} ${timer.category.label.toLowerCase()} • Chuẩn ${standardSeconds}s$staffSuffix';
+        ? '1 đơn hàng • Chuẩn ${standardSeconds}s$staffSuffix$measuredSuffix'
+        : '${timer.quantity} ${timer.category.label.toLowerCase()} • Chuẩn ${standardSeconds}s$staffSuffix$measuredSuffix';
 
     if (isCompact) {
       return Container(

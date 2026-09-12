@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/performance_calculator.dart';
 import '../../../models/measurement_model.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../session/providers/timer_service.dart';
 import '../widgets/timer_card.dart';
 
@@ -15,20 +16,29 @@ class ActiveTimersTab extends ConsumerStatefulWidget {
 
 class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
   PerformanceCategory? _selectedCategory; // null = Tất cả
+  bool _onlyMyTimers = false;
 
   @override
   Widget build(BuildContext context) {
     ref.watch(performanceTimerProvider);
+    final currentUid = ref.watch(currentUserIdProvider);
     final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
     final activeTimers = allMeasurements.where((m) => m.status.isActive).toList();
 
-    final drinkCount = activeTimers.where((m) => m.category == PerformanceCategory.drink).length;
-    final cakeCount = activeTimers.where((m) => m.category == PerformanceCategory.cake).length;
-    final orderCount = activeTimers.where((m) => m.category == PerformanceCategory.order).length;
+    var baseTimers = activeTimers;
+    if (_onlyMyTimers && currentUid != null) {
+      baseTimers = baseTimers.where((m) => m.userId == currentUid).toList();
+    }
+
+    final drinkCount = baseTimers.where((m) => m.category == PerformanceCategory.drink).length;
+    final cakeCount = baseTimers.where((m) => m.category == PerformanceCategory.cake).length;
+    final orderCount = baseTimers.where((m) => m.category == PerformanceCategory.order).length;
 
     final filteredTimers = _selectedCategory == null
-        ? activeTimers
-        : activeTimers.where((m) => m.category == _selectedCategory).toList();
+        ? baseTimers
+        : baseTimers.where((m) => m.category == _selectedCategory).toList();
+
+    final myActiveCount = currentUid != null ? activeTimers.where((m) => m.userId == currentUid).length : 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
@@ -64,22 +74,40 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${activeTimers.length} timer đang hoạt động đồng thời',
+                        '${activeTimers.length} timer đang hoạt động đồng thời trong ca',
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                           fontFamily: 'BeVietnamPro',
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
-                      // Filter chips
+                      // Luồng đo: Tất cả máy vs Timer của tôi
+                      Row(
+                        children: [
+                          _FilterPill(
+                            label: 'Tất cả máy (${activeTimers.length})',
+                            isSelected: !_onlyMyTimers,
+                            onTap: () => setState(() => _onlyMyTimers = false),
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterPill(
+                            label: 'Timer của tôi ($myActiveCount)',
+                            isSelected: _onlyMyTimers,
+                            onTap: () => setState(() => _onlyMyTimers = true),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Filter chips theo hạng mục
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
                             _FilterPill(
-                              label: 'Tất cả (${activeTimers.length})',
+                              label: 'Tất cả (${baseTimers.length})',
                               isSelected: _selectedCategory == null,
                               onTap: () => setState(() => _selectedCategory = null),
                             ),

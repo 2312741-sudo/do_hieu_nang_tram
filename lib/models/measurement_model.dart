@@ -121,6 +121,7 @@ class MeasurementModel extends Equatable {
   final String sessionId;
   final String storeId;
   final String userId;
+  final String? measuredByName;
   final PerformanceCategory category;
   final int quantity;
   final String? orderCode;
@@ -138,6 +139,7 @@ class MeasurementModel extends Equatable {
     required this.sessionId,
     required this.storeId,
     required this.userId,
+    this.measuredByName,
     required this.category,
     this.quantity = 1,
     this.orderCode,
@@ -180,6 +182,7 @@ class MeasurementModel extends Equatable {
     String? sessionId,
     String? storeId,
     String? userId,
+    String? measuredByName,
     PerformanceCategory? category,
     int? quantity,
     String? orderCode,
@@ -197,6 +200,7 @@ class MeasurementModel extends Equatable {
       sessionId: sessionId ?? this.sessionId,
       storeId: storeId ?? this.storeId,
       userId: userId ?? this.userId,
+      measuredByName: measuredByName ?? this.measuredByName,
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,
       orderCode: orderCode ?? this.orderCode,
@@ -217,6 +221,7 @@ class MeasurementModel extends Equatable {
       'sessionId': sessionId,
       'storeId': storeId,
       'userId': userId,
+      if (measuredByName != null) 'measuredByName': measuredByName,
       'category': category.value,
       'quantity': quantity,
       'orderCode': orderCode,
@@ -243,6 +248,7 @@ class MeasurementModel extends Equatable {
       sessionId: json['sessionId'] as String? ?? '',
       storeId: json['storeId'] as String? ?? '',
       userId: json['userId'] as String? ?? '',
+      measuredByName: json['measuredByName'] as String?,
       category: PerformanceCategoryExtension.fromString(json['category'] as String?),
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       orderCode: json['orderCode'] as String?,
@@ -268,6 +274,7 @@ class MeasurementModel extends Equatable {
         sessionId,
         storeId,
         userId,
+        measuredByName,
         category,
         quantity,
         orderCode,
