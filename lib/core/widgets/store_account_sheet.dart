@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -38,9 +37,7 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
     setState(() => _isSwitchingStore = true);
 
     try {
-      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
-        'currentStoreId': targetStore.id,
-      });
+      await ref.read(performanceSelectedStoreIdProvider.notifier).selectStore(targetStore.id);
 
       if (!mounted) return;
       Navigator.pop(context);

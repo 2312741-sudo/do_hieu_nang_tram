@@ -20,10 +20,10 @@ class _AccessDeniedScreenState extends ConsumerState<AccessDeniedScreen> {
     if (uid == null) return;
 
     setState(() => _isSwitching = true);
-    final success = await ref.read(authRepositoryProvider).switchCurrentStore(uid, storeId);
+    await ref.read(performanceSelectedStoreIdProvider.notifier).selectStore(storeId);
     if (mounted) setState(() => _isSwitching = false);
 
-    if (success && mounted) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã chuyển sang cửa hàng: $storeName'),

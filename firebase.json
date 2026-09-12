@@ -1,0 +1,6 @@
+{
+  "firestore": {
+    "rules": "../app_cham_cong/firebase_functions/firestore.rules",
+    "indexes": "../app_cham_cong/firebase_functions/firestore.indexes.json"
+  }
+}

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../repositories/auth_repository.dart';
 import '../../../models/user_model.dart';
 import '../../../models/member_model.dart';
@@ -27,7 +28,49 @@ final currentUserProvider = StreamProvider<UserModel?>((ref) {
   return ref.watch(authRepositoryProvider).watchUserDocument(uid);
 });
 
+/// Quản lý trạng thái chọn cửa hàng RIÊNG BIỆT của app Đo Hiệu Năng:
+/// Lưu trong SharedPreferences local, TUYỆT ĐỐI KHÔNG ghi đè users/{uid}.currentStoreId trên Firestore
+class PerformanceStoreNotifier extends StateNotifier<String?> {
+  final Ref _ref;
+
+  PerformanceStoreNotifier(this._ref) : super(null) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    final uid = _ref.read(currentUserIdProvider);
+    if (uid != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedStoreId = prefs.getString('perf_store_$uid');
+      if (savedStoreId != null && savedStoreId.isNotEmpty) {
+        state = savedStoreId;
+      }
+    }
+  }
+
+  Future<void> selectStore(String storeId) async {
+    state = storeId;
+    final uid = _ref.read(currentUserIdProvider);
+    if (uid != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('perf_store_$uid', storeId);
+    }
+  }
+}
+
+final performanceSelectedStoreIdProvider =
+    StateNotifierProvider<PerformanceStoreNotifier, String?>((ref) {
+  return PerformanceStoreNotifier(ref);
+});
+
 final currentStoreIdProvider = Provider<String?>((ref) {
+  // 1. Ưu tiên cửa hàng được chọn riêng cho Đo Hiệu Năng trong SharedPreferences
+  final perfStoreId = ref.watch(performanceSelectedStoreIdProvider);
+  if (perfStoreId != null && perfStoreId.isNotEmpty) {
+    return perfStoreId;
+  }
+
+  // 2. Fallback sang currentStoreId của user nếu có
   final user = ref.watch(currentUserProvider).valueOrNull;
   if (user == null) return null;
 
@@ -72,18 +115,32 @@ final currentMemberProvider = StreamProvider<MemberModel?>((ref) {
 });
 
 final currentRoleProvider = Provider<UserRole?>((ref) {
-  final member = ref.watch(currentMemberProvider).valueOrNull;
-  if (member != null) {
-    return member.role;
-  }
-
   final store = ref.watch(currentStoreProvider).valueOrNull;
   final uid = ref.watch(currentUserIdProvider);
-  if (store != null && uid != null && store.ownerId.trim() == uid.trim()) {
+  final member = ref.watch(currentMemberProvider).valueOrNull;
+
+  if (store == null || uid == null) return null;
+
+  final isStoreOwner = store.ownerId.trim() == uid.trim();
+
+  // 1. Nếu member doc chưa tải hoặc không tồn tại, nhưng store.ownerId == uid -> Chủ quán
+  if (member == null) {
+    return isStoreOwner ? UserRole.owner : null;
+  }
+
+  // 2. PERMISSION TRUTH RECONCILIATION:
+  // Nếu member doc ghi role == owner, nhưng store.ownerId KHÁC uid -> hạ quyền xuống manager1 (chống chiếm quyền)
+  if (member.role == UserRole.owner) {
+    return isStoreOwner ? UserRole.owner : UserRole.manager1;
+  }
+
+  // 3. Nếu store.ownerId khớp uid -> luôn bảo vệ quyền Chủ tối cao
+  if (isStoreOwner) {
     return UserRole.owner;
   }
 
-  return null;
+  // 4. Các role thông thường (manager1, manager2, legacyManager, employee)
+  return member.role;
 });
 
 final isOwnerProvider = Provider<bool>((ref) {

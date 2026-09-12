@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../../models/user_model.dart';
 import '../../../models/member_model.dart';
 import '../../../models/store_model.dart';
+import '../../store/services/store_inheritance_service.dart';
 
 class UserStoreWithRole {
   final StoreModel store;
@@ -378,10 +379,69 @@ class AuthRepository {
     if (user == null) return;
     final uid = user.uid;
 
+    // ── Step 1: Kích hoạt kế thừa cửa hàng nếu user là Chủ / dọn dẹp quan hệ store ──
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      final storeIds = <String>{};
+
+      if (userDoc.exists) {
+        final userData = userDoc.data() ?? {};
+        final rawStoreIds = List<String>.from(userData['storeIds'] ?? []);
+        storeIds.addAll(rawStoreIds.where((id) => id.isNotEmpty));
+
+        final currentStoreId = userData['currentStoreId'] as String?;
+        if (currentStoreId != null && currentStoreId.isNotEmpty) {
+          storeIds.add(currentStoreId);
+        }
+      }
+
+      // Fallback discovery: tìm các cửa hàng user sở hữu hoặc có member doc
+      try {
+        final ownedSnap = await _firestore
+            .collection('stores')
+            .where('ownerId', isEqualTo: uid)
+            .get();
+        for (final doc in ownedSnap.docs) {
+          storeIds.add(doc.id);
+        }
+      } catch (_) {}
+
+      try {
+        final memberSnap = await _firestore
+            .collectionGroup('members')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in memberSnap.docs) {
+          final storeRef = doc.reference.parent.parent;
+          if (storeRef != null && storeRef.id.isNotEmpty) {
+            storeIds.add(storeRef.id);
+          }
+        }
+      } catch (_) {}
+
+      final inheritanceService =
+          StoreInheritanceService(firestore: _firestore);
+      for (final storeId in storeIds) {
+        try {
+          await inheritanceService.executeInheritance(
+            storeId: storeId,
+            leavingUserId: uid,
+            reason: 'account_deleted',
+          );
+        } catch (_) {
+          // Bỏ qua lỗi từng store, không chặn quá trình xóa TK
+        }
+      }
+    } catch (_) {
+      // Bỏ qua lỗi bước cleanup, tiếp tục xóa tài khoản
+    }
+
+    // ── Step 2: Xóa document /users/{uid} ──
     try {
       await _firestore.collection('users').doc(uid).delete();
     } catch (_) {}
 
+    // ── Step 3: Xóa Firebase Auth account ──
     await user.delete();
   }
 }

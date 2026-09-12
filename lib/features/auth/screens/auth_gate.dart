@@ -58,9 +58,9 @@ class AuthGate extends ConsumerWidget {
                 .firstOrNull;
 
             if (managerStore != null) {
-              // Auto switch to manager store
+              // Auto switch to manager store (local only, do not overwrite Firestore currentStoreId)
               Future.microtask(() {
-                ref.read(authRepositoryProvider).switchCurrentStore(user.uid, managerStore.store.id);
+                ref.read(performanceSelectedStoreIdProvider.notifier).selectStore(managerStore.store.id);
               });
               return const Scaffold(
                 backgroundColor: AppColors.background,
