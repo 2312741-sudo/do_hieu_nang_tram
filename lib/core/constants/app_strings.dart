@@ -4,7 +4,7 @@ class AppStrings {
   // App
   static const String appName = 'Đo Hiệu Năng Trạm';
   static const String appTagline = 'Đo lường tốc độ pha chế & xử lý đơn hàng';
-  static const String appVersion = 'Phiên bản 1.0.1';
+  static const String appVersion = 'Phiên bản 1.0.3';
 
   // Auth
   static const String login = 'Đăng nhập';

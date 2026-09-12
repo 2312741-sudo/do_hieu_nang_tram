@@ -522,7 +522,7 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                         ),
                       ),
                       Text(
-                        'v1.0.2',
+                        'v1.0.3',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
