@@ -256,6 +256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Container(
                           width: 88,
                           height: 88,
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
@@ -266,8 +267,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ],
                             image: const DecorationImage(
-                              image: AssetImage('assets/images/logo.jpg'),
-                              fit: BoxFit.contain,
+                              image: AssetImage('assets/images/logo.png'),
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
