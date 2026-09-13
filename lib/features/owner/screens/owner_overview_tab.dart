@@ -27,11 +27,18 @@ class OwnerOverviewTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).valueOrNull;
     final store = ref.watch(currentStoreProvider).valueOrNull;
+    final storesAsync = ref.watch(userStoresProvider);
+    final stores = storesAsync.valueOrNull ?? [];
     final repo = ref.watch(performanceRepositoryProvider);
 
-    final reportsStream = store != null
-        ? repo.watchReportsForStore(store.id)
-        : repo.watchAllReports();
+    final Stream<List<PerformanceReportModel>> reportsStream;
+    if (store != null) {
+      reportsStream = repo.watchReportsForStore(store.id);
+    } else if (stores.isNotEmpty) {
+      reportsStream = repo.watchReportsForStores(stores.map((s) => s.id).toList());
+    } else {
+      reportsStream = Stream.value([]);
+    }
 
     final firstName = user?.name.split(' ').last ?? 'Chủ quán';
     final dateFmt = DateFormat('dd/MM/yyyy');

@@ -158,14 +158,30 @@ class PerformanceRepository {
     });
   }
 
-  Stream<List<PerformanceReportModel>> watchAllReports() {
-    return _reportsCol.snapshots().map((snap) {
+  Stream<List<PerformanceReportModel>> watchReportsForStores(List<String> storeIds) {
+    final validIds = storeIds.where((id) => id.trim().isNotEmpty).take(30).toList();
+    if (validIds.isEmpty) {
+      return Stream.value([]);
+    }
+    return _reportsCol
+        .where('storeId', whereIn: validIds)
+        .snapshots()
+        .map((snap) {
       final list = snap.docs
           .map((doc) => PerformanceReportModel.fromFirestore(doc))
           .toList();
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
     });
+  }
+
+  Stream<List<PerformanceReportModel>> watchAllReports([List<String>? fallbackStoreIds]) {
+    // Không bao giờ query toàn bộ collection mà không có storeId filter
+    // để tránh bị Firestore Security Rules chặn lỗi permission-denied.
+    if (fallbackStoreIds != null && fallbackStoreIds.isNotEmpty) {
+      return watchReportsForStores(fallbackStoreIds);
+    }
+    return Stream.value([]);
   }
 
   Stream<PerformanceReportModel?> watchReport(String reportId) {
@@ -191,11 +207,19 @@ class PerformanceRepository {
         .map((snap) => snap.docs.length);
   }
 
-  Stream<int> watchAllUnviewedReportsCount() {
-    return _reportsCol
-        .where('status', isEqualTo: ReportStatus.submitted.value)
-        .snapshots()
-        .map((snap) => snap.docs.length);
+  Stream<int> watchUnviewedReportsCountForStores(List<String> storeIds) {
+    return watchReportsForStores(storeIds).map(
+      (reports) => reports.where((r) => r.status == ReportStatus.submitted).length,
+    );
+  }
+
+  Stream<int> watchAllUnviewedReportsCount([List<String>? fallbackStoreIds]) {
+    // Không bao giờ query toàn bộ collection mà không có storeId filter
+    // để tránh bị Firestore Security Rules chặn lỗi permission-denied.
+    if (fallbackStoreIds != null && fallbackStoreIds.isNotEmpty) {
+      return watchUnviewedReportsCountForStores(fallbackStoreIds);
+    }
+    return Stream.value(0);
   }
 
   /// Xóa dữ liệu đo lường (sessions, subcollection measurements, và reports)

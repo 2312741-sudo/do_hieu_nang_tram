@@ -30,15 +30,26 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
     final stores = storesAsync.valueOrNull ?? [];
     final currentStore = ref.watch(currentStoreProvider).valueOrNull;
 
-    // Default to current store if not selected
+    // Tự động gán store mặc định nếu chưa chọn
     if (_selectedStoreId == null && stores.isNotEmpty) {
-      _selectedStoreId = currentStore?.id ?? stores.first.id;
+      if (stores.length == 1) {
+        _selectedStoreId = stores.first.id;
+      } else if (currentStore != null && stores.any((s) => s.id == currentStore.id)) {
+        _selectedStoreId = currentStore.id;
+      } else {
+        _selectedStoreId = '__all__';
+      }
     }
 
     final repo = ref.watch(performanceRepositoryProvider);
-    final reportsStream = _selectedStoreId != null
-        ? repo.watchReportsForStore(_selectedStoreId!)
-        : repo.watchAllReports();
+    final Stream<List<PerformanceReportModel>> reportsStream;
+    if (_selectedStoreId == '__all__') {
+      reportsStream = repo.watchReportsForStores(stores.map((s) => s.id).toList());
+    } else if (_selectedStoreId != null) {
+      reportsStream = repo.watchReportsForStore(_selectedStoreId!);
+    } else {
+      reportsStream = Stream.value([]);
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
@@ -110,23 +121,41 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: stores.any((s) => s.id == _selectedStoreId) ? _selectedStoreId : (stores.isNotEmpty ? stores.first.id : null),
+                            value: (_selectedStoreId == '__all__' || stores.any((s) => s.id == _selectedStoreId))
+                                ? _selectedStoreId
+                                : (stores.length > 1 ? '__all__' : (stores.isNotEmpty ? stores.first.id : null)),
                             isExpanded: true,
                             icon: const Icon(Icons.arrow_drop_down, size: 20),
-                            items: stores.map((s) {
-                              return DropdownMenuItem(
-                                value: s.id,
-                                child: Text(
-                                  s.name,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: 'BeVietnamPro',
+                            items: [
+                              if (stores.length > 1)
+                                DropdownMenuItem(
+                                  value: '__all__',
+                                  child: Text(
+                                    '🏢 Tất cả cơ sở (${stores.length})',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      fontFamily: 'BeVietnamPro',
+                                      color: AppColors.primary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              );
-                            }).toList(),
+                              ...stores.map((s) {
+                                return DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(
+                                    s.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'BeVietnamPro',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }),
+                            ],
                             onChanged: (val) {
                               setState(() {
                                 _selectedStoreId = val;

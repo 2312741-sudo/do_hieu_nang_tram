@@ -30,10 +30,18 @@ class _OwnerMainScreenState extends ConsumerState<OwnerMainScreen> {
     final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
     final activeCount = allMeasurements.where((m) => m.status.isActive).length;
 
+    final storesAsync = ref.watch(userStoresProvider);
+    final stores = storesAsync.valueOrNull ?? [];
+
     // Realtime badge for unviewed submitted reports
-    final unviewedStream = store != null
-        ? repo.watchUnviewedReportsCount(store.id)
-        : repo.watchAllUnviewedReportsCount();
+    final Stream<int> unviewedStream;
+    if (store != null) {
+      unviewedStream = repo.watchUnviewedReportsCount(store.id);
+    } else if (stores.isNotEmpty) {
+      unviewedStream = repo.watchUnviewedReportsCountForStores(stores.map((s) => s.id).toList());
+    } else {
+      unviewedStream = Stream.value(0);
+    }
 
     return StreamBuilder<int>(
       stream: unviewedStream,
