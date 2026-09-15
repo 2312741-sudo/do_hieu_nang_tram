@@ -86,7 +86,11 @@ service cloud.firestore {
 
       match /accountItems/{itemId} {
         allow read: if isSelf(userId);
-        allow write: if false;
+        // Chỉ cho phép user tự cập nhật trạng thái đã đọc của chính mình
+        allow update: if isSelf(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']) &&
+          request.resource.data.readAt == request.time;
+        allow create, delete: if false;
       }
 
       match /stores/{storeId}/items/{itemId} {
@@ -245,9 +249,19 @@ service cloud.firestore {
       }
 
       // 4.6. Thông báo nội bộ cửa hàng
+      // Đọc: mọi thành viên active (QL2, NV cũng nhận thông báo broadcast, sinh nhật, lịch, v.v.)
+      // Lọc theo scope/role được thực hiện ở client (Flutter) — không cần chặn tại Firestore.
+      // Update readBy: mọi thành viên active có thể tự đánh dấu đã đọc (chỉ field readBy, chỉ arrayUnion chính mình).
+      // Tạo/sửa nội dung/xóa: chỉ Chủ + QL1.
       match /notifications/{notificationId} {
-        allow read: if isOwnerOrManager1(storeId);
-        allow write: if isOwnerOrManager1(storeId);
+        allow read: if isActiveMember(storeId);
+        // Cho phép bất kỳ thành viên active nào tự thêm uid mình vào readBy (mark as read)
+        allow update: if isActiveMember(storeId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']) &&
+          request.resource.data.readBy.hasAll(resource.data.readBy) &&
+          request.resource.data.readBy.removeAll(resource.data.readBy).hasOnly([request.auth.uid]);
+        // Tạo/xóa và sửa nội dung: chỉ Chủ + QL1
+        allow create, delete: if isOwnerOrManager1(storeId);
       }
 
       // 4.7. Nhật ký kế thừa / chuyển nhượng (audit_logs)
