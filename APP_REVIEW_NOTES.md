@@ -1,30 +1,36 @@
-# APP STORE CONNECT METADATA & REVIEW NOTES — VERSION 1.0.7
+# APP STORE CONNECT METADATA & REVIEW NOTES — VERSION 1.0.8
 
 **App Name:** Đo Hiệu Năng Trạm
-**Version:** 1.0.7
-**Build:** 15
+**Version:** 1.0.8
+**Build:** 16
 **Platform:** iOS
 
 ---
 
 
-## ⚡ URGENT NOTE TO TESTER — VERSION 1.0.7
+## ⚡ URGENT NOTE TO TESTER — VERSION 1.0.8
 
 Dear Review / Test Team,
 
 We **sincerely apologize** for this repeated update submission and the inconvenience it has caused to your review process.
 
-After discovering critical usability issues and performance delays in previous builds just before our scheduled store operations go-live, we issued this comprehensive update **1.0.7 (Build 15)** to ensure stable, smooth operations for our store staff and managers.
+In this update **1.0.8 (Build 16)**, we have completely revamped and modernized the user interface design across the entire application, alongside critical stability and performance enhancements to provide an intuitive, high-contrast, and fast experience for our store staff and managers in busy coffee shop environments.
 
-**Key improvements in 1.0.7 (Build 15):**
+**Key improvements in 1.0.8 (Build 16):**
 
-1. **Instant Order Timer:** Order timers can now start immediately with deferred order code entry on the active timer card.
-2. **Incident Evidence Photos:** Shift managers can now attach evidence photos for recorded incidents (with auto-timestamp camera watermarking or gallery picking, and direct hyperlinks in Excel reports).
-3. **App Launch & Rendering Performance:** Eliminated startup latency by parallelizing store resolution and optimizing provider reactivity.
-4. **Resolved UI text wrapping:** Fixed text column wrapping issues in end-of-shift reports.
-5. **Fixed duplicate timer & session isolation bugs:** Guaranteed single timer creation and distinct session ownership per manager account.
+1. **Complete UI Redesign & Category Timer Themes:**
+   - Introduced dedicated visual themes for each timer category (Crimson Red for Drinks, Warm Amber Orange for Bakery, and Deep Slate Navy for Orders).
+   - Redesigned timer cards with high-contrast stopwatch digits, distinct category accent stripes, and clear status badges (Running, Paused, Completed) to eliminate operator confusion during rush hours.
+2. **Revamped Session & Incident Workflow:**
+   - Overhauled the incident recording sheet with integrated camera evidence attachment, automatic smart watermarking (timestamp, store name, reporter), and photo compression (< 120 KB).
+   - Clear visual distinctions between Shift Manager and Barista/Employee cards with updated role badges and color-coded chips.
+3. **Optimized Layout & Responsiveness:**
+   - Enhanced UI fluidity with zero-jank frame transitions and smooth animations across iPhone and iPad screens.
+   - Fixed text wrapping and expanded notes inputs in end-of-shift review screens.
+4. **Camera & Incident Handling Refinements:**
+   - Configured evidence camera capture to default directly to the rear camera with optimized exposure for store incident logs.
 
-We **kindly and urgently request that you prioritize the review of this build** so it can go live for our store network.
+We **kindly and urgently request that you prioritize the review of this build** so our operational teams can immediately benefit from this improved user experience.
 
 Respectfully,
 **The Đo Hiệu Năng Trạm Development Team**
@@ -49,13 +55,13 @@ Bấm giờ vận hành cửa hàng
 
 hiệu năng,bấm giờ,cửa hàng,pha chế,báo cáo,năng suất,quản lý,Trạm
 
-### What's New in Version 1.0.7 (Build 15)
+### What's New in Version 1.0.8 (Build 16)
 
-- **Bấm giờ đơn hàng linh hoạt:** Cho phép bấm giờ đo đơn ngay lập tức, nhập mã đơn sau trên thẻ đồng hồ.
-- **Đính kèm ảnh sự cố:** Hỗ trợ chụp ảnh trực tiếp có đóng dấu ngày giờ, cửa hàng hoặc chọn từ thư viện ảnh; nhúng siêu liên kết xem ảnh trong file Excel.
-- **Tối ưu tốc độ ứng dụng:** Khởi động cực nhanh, mượt mà, loại bỏ hoàn toàn độ trễ và hiện tượng tải lâu.
-- **Cải tiến giao diện:** Tự động mở rộng ô nhập ghi chú kết ca, sửa lỗi hiển thị chữ và logo thương hiệu sắc nét trên màn hình chờ.
-- **Sửa lỗi timer & phiên đo:** Ngăn chặn hoàn toàn tình trạng timer trùng lặp và đảm bảo mỗi quản lý vận hành phiên đo độc lập.
+- **Nâng cấp toàn diện thiết kế giao diện:** Thiết kế lại hoàn toàn thẻ bấm giờ với bộ nhận diện màu sắc riêng biệt cho từng hạng mục (Đỏ: Nước, Vàng cam: Bánh, Xanh navy: Đơn hàng) giúp quan sát trực quan, chống nhầm lẫn trong giờ cao điểm.
+- **Đồng hồ bấm giờ trực quan & sắc nét:** Chữ số thời gian to rõ, tương phản cao, thẻ trạng thái động mượt mà khi chạy/tạm dừng.
+- **Trải nghiệm chụp ảnh sự cố cải tiến:** Giao diện đính kèm ảnh thông minh, tự động đóng dấu ngày giờ - ca trực - cửa hàng và nén ảnh siêu nhẹ.
+- **Tối ưu tốc độ & độ mượt mà:** Khắc phục hoàn toàn hiện tượng giật khựng, chuyển trang tức thì, vận hành trơn tru trên cả iPhone và iPad.
+- **Sửa lỗi & nâng cao độ ổn định:** Hoàn thiện luồng phiên đo độc lập, đảm bảo an toàn dữ liệu tuyệt đối giữa các tài khoản quản lý.
 
 ### Description
 
@@ -94,12 +100,13 @@ Measure preparation and order-processing times, manage work sessions, and review
 
 performance,timer,store,drinks,bakery,orders,reports,productivity
 
-### What's New in Version 1.0.6
+### What's New in Version 1.0.8 (Build 16)
 
-- **Critical fix:** Starting a timer once no longer creates two duplicate timers simultaneously.
-- **Session fix:** Two accounts at the same store no longer share the same measurement session.
-- Improved timer state reliability after app restart.
-- Enhanced Firestore connection stability and measurement sync.
+- **Comprehensive UI Redesign:** Completely redesigned timer cards with dedicated category visual identities (Crimson for Drinks, Warm Amber for Bakery, Deep Navy for Orders) for rapid, error-free recognition.
+- **Enhanced Stopwatch & Readability:** High-contrast large digital timer displays with fluid running/pause state animations.
+- **Improved Incident Evidence Capture:** Streamlined incident attachment interface featuring automatic camera watermarking (timestamp, store name, reporter) and lightweight image compression.
+- **Performance & Smoothness:** Eliminated latency and UI jank; instantaneous navigation and buttery-smooth responsiveness on both iPhone and iPad.
+- **Stability & Reliability:** Robust session isolation ensuring complete privacy and stability across concurrent manager accounts.
 
 ### Description
 

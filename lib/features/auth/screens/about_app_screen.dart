@@ -6,8 +6,8 @@ import '../../../core/constants/app_colors.dart';
 class AboutAppScreen extends StatelessWidget {
   const AboutAppScreen({super.key});
 
-  static const String appVersion = '1.0.7';
-  static const String buildNumber = '15';
+  static const String appVersion = '1.0.8';
+  static const String buildNumber = '16';
 
   Future<void> _launchUrl(BuildContext context, String urlStr) async {
     try {
