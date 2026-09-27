@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 class UserModel extends Equatable {
@@ -28,12 +29,14 @@ class UserModel extends Equatable {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, [String? docId]) {
-    DateTime? parsedBirthday;
-    if (json['birthday'] != null) {
-      try {
-        parsedBirthday = DateTime.parse(json['birthday'].toString());
-      } catch (_) {}
+    DateTime? tryParseDate(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
     }
+
+    final parsedBirthday = tryParseDate(json['birthday']);
 
     return UserModel(
       id: docId ?? json['id'] ?? '',
@@ -45,9 +48,7 @@ class UserModel extends Equatable {
       currentStoreId: json['currentStoreId'],
       storeIds: List<String>.from(json['storeIds'] ?? []),
       notifyShiftInOut: json['notifyShiftInOut'] as bool? ?? true,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt'].toString()) 
-          : DateTime.now(),
+      createdAt: tryParseDate(json['createdAt']) ?? DateTime.now(),
     );
   }
 

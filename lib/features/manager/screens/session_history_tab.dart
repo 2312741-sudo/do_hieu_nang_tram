@@ -18,7 +18,7 @@ class SessionHistoryTab extends ConsumerWidget {
     final repo = ref.watch(performanceRepositoryProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.neutral,
@@ -34,13 +34,15 @@ class SessionHistoryTab extends ConsumerWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.leaderboard_rounded, color: AppColors.primary),
+            icon: Icon(Icons.leaderboard_rounded,
+                color: Theme.of(context).colorScheme.primary),
             tooltip: 'Bảng xếp hạng hiệu suất',
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const StaffLeaderboardScreen(),
+                  builder: (_) => InheritedTheme.captureAll(
+                      context, const StaffLeaderboardScreen()),
                 ),
               );
             },
@@ -54,7 +56,9 @@ class SessionHistoryTab extends ConsumerWidget {
               stream: repo.watchReportsForStore(storeId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return Center(
+                      child: CircularProgressIndicator(
+                          color: Theme.of(context).colorScheme.primary));
                 }
 
                 if (snapshot.hasError) {
@@ -63,7 +67,9 @@ class SessionHistoryTab extends ConsumerWidget {
                       padding: const EdgeInsets.all(20),
                       child: Text(
                         'Lỗi tải lịch sử: ${snapshot.error}',
-                        style: const TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro'),
+                        style: const TextStyle(
+                            color: AppColors.danger,
+                            fontFamily: 'BeVietnamPro'),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -76,7 +82,8 @@ class SessionHistoryTab extends ConsumerWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.history_rounded, size: 56, color: Colors.grey.shade400),
+                        Icon(Icons.history_rounded,
+                            size: 56, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
                         const Text(
                           'Chưa có lịch sử phiên đo nào.',
@@ -101,14 +108,16 @@ class SessionHistoryTab extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final report = reports[index];
                     final dateStr = dateFmt.format(report.startedAt);
-                    final timeStr = '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
+                    final timeStr =
+                        '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
 
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ReportDetailScreen(report: report),
+                            builder: (_) => InheritedTheme.captureAll(
+                                context, ReportDetailScreen(report: report)),
                           ),
                         );
                       },
@@ -119,7 +128,10 @@ class SessionHistoryTab extends ConsumerWidget {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           boxShadow: const [
-                            BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3)),
+                            BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 10,
+                                offset: Offset(0, 3)),
                           ],
                         ),
                         child: Column(
@@ -130,15 +142,22 @@ class SessionHistoryTab extends ConsumerWidget {
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.1),
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary
+                                        .withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: const Icon(Icons.assessment_rounded, color: AppColors.primary, size: 20),
+                                  child: Icon(Icons.assessment_rounded,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      size: 20),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         report.storeName,
@@ -160,9 +179,12 @@ class SessionHistoryTab extends ConsumerWidget {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: report.isViewed ? Colors.grey.shade100 : AppColors.accent.withOpacity(0.15),
+                                    color: report.isViewed
+                                        ? Colors.grey.shade100
+                                        : AppColors.accent.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -170,7 +192,9 @@ class SessionHistoryTab extends ConsumerWidget {
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
-                                      color: report.isViewed ? Colors.grey.shade600 : AppColors.accent,
+                                      color: report.isViewed
+                                          ? Colors.grey.shade600
+                                          : AppColors.accent,
                                       fontFamily: 'BeVietnamPro',
                                     ),
                                   ),
@@ -180,7 +204,8 @@ class SessionHistoryTab extends ConsumerWidget {
                             const Divider(height: 20),
                             Row(
                               children: [
-                                const Icon(Icons.badge_rounded, size: 14, color: AppColors.info),
+                                const Icon(Icons.badge_rounded,
+                                    size: 14, color: AppColors.info),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -207,27 +232,38 @@ class SessionHistoryTab extends ConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   _MiniMetric(
                                     label: 'Nước',
-                                    value: PerformanceCalculator.formatSeconds(report.drinkAverageSeconds),
+                                    value: PerformanceCalculator.formatSeconds(
+                                        report.drinkAverageSeconds),
                                   ),
-                                  Container(width: 1, height: 20, color: AppColors.border),
+                                  Container(
+                                      width: 1,
+                                      height: 20,
+                                      color: AppColors.border),
                                   _MiniMetric(
                                     label: 'Bánh',
-                                    value: PerformanceCalculator.formatSeconds(report.cakeAverageSeconds),
+                                    value: PerformanceCalculator.formatSeconds(
+                                        report.cakeAverageSeconds),
                                   ),
-                                  Container(width: 1, height: 20, color: AppColors.border),
+                                  Container(
+                                      width: 1,
+                                      height: 20,
+                                      color: AppColors.border),
                                   _MiniMetric(
                                     label: 'Đơn',
-                                    value: PerformanceCalculator.formatSeconds(report.orderAverageSeconds),
+                                    value: PerformanceCalculator.formatSeconds(
+                                        report.orderAverageSeconds),
                                   ),
                                 ],
                               ),
@@ -256,12 +292,20 @@ class _MiniMetric extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.neutral,
+              fontFamily: 'BeVietnamPro'),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', color: AppColors.neutral),
+          style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'BeVietnamPro',
+              color: AppColors.neutral),
         ),
       ],
     );

@@ -26,15 +26,15 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final storesAsync = ref.watch(userStoresProvider);
-    final stores = storesAsync.valueOrNull ?? [];
+    final stores = ref.watch(performanceAccessibleStoresProvider);
     final currentStore = ref.watch(currentStoreProvider).valueOrNull;
 
     // Tự động gán store mặc định nếu chưa chọn
     if (_selectedStoreId == null && stores.isNotEmpty) {
       if (stores.length == 1) {
         _selectedStoreId = stores.first.id;
-      } else if (currentStore != null && stores.any((s) => s.id == currentStore.id)) {
+      } else if (currentStore != null &&
+          stores.any((s) => s.id == currentStore.id)) {
         _selectedStoreId = currentStore.id;
       } else {
         _selectedStoreId = '__all__';
@@ -44,7 +44,8 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
     final repo = ref.watch(performanceRepositoryProvider);
     final Stream<List<PerformanceReportModel>> reportsStream;
     if (_selectedStoreId == '__all__') {
-      reportsStream = repo.watchReportsForStores(stores.map((s) => s.id).toList());
+      reportsStream =
+          repo.watchReportsForStores(stores.map((s) => s.id).toList());
     } else if (_selectedStoreId != null) {
       reportsStream = repo.watchReportsForStore(_selectedStoreId!);
     } else {
@@ -52,7 +53,7 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.neutral,
@@ -68,7 +69,8 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded, color: AppColors.danger),
+            icon:
+                const Icon(Icons.delete_sweep_rounded, color: AppColors.danger),
             tooltip: 'Xóa dữ liệu đo lường',
             onPressed: () => DeleteMeasurementDataDialog.show(context),
           ),
@@ -85,13 +87,15 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.leaderboard_rounded, color: AppColors.primary),
+            icon: const Icon(Icons.leaderboard_rounded,
+                color: AppColors.ownerAccent),
             tooltip: 'Bảng xếp hạng hiệu suất',
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const StaffLeaderboardScreen(),
+                  builder: (_) => InheritedTheme.captureAll(
+                      context, const StaffLeaderboardScreen()),
                 ),
               );
             },
@@ -121,9 +125,14 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: (_selectedStoreId == '__all__' || stores.any((s) => s.id == _selectedStoreId))
+                            value: (_selectedStoreId == '__all__' ||
+                                    stores.any((s) => s.id == _selectedStoreId))
                                 ? _selectedStoreId
-                                : (stores.length > 1 ? '__all__' : (stores.isNotEmpty ? stores.first.id : null)),
+                                : (stores.length > 1
+                                    ? '__all__'
+                                    : (stores.isNotEmpty
+                                        ? stores.first.id
+                                        : null)),
                             isExpanded: true,
                             icon: const Icon(Icons.arrow_drop_down, size: 20),
                             items: [
@@ -136,7 +145,7 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                       fontFamily: 'BeVietnamPro',
-                                      color: AppColors.primary,
+                                      color: AppColors.ownerAccent,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -181,11 +190,27 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                           value: _dateFilter,
                           icon: const Icon(Icons.arrow_drop_down, size: 20),
                           items: const [
-                            DropdownMenuItem(value: 'all', child: Text('Tất cả ngày', style: TextStyle(fontSize: 13, fontFamily: 'BeVietnamPro'))),
-                            DropdownMenuItem(value: 'today', child: Text('Hôm nay', style: TextStyle(fontSize: 13, fontFamily: 'BeVietnamPro'))),
-                            DropdownMenuItem(value: '7days', child: Text('7 ngày qua', style: TextStyle(fontSize: 13, fontFamily: 'BeVietnamPro'))),
+                            DropdownMenuItem(
+                                value: 'all',
+                                child: Text('Tất cả ngày',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontFamily: 'BeVietnamPro'))),
+                            DropdownMenuItem(
+                                value: 'today',
+                                child: Text('Hôm nay',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontFamily: 'BeVietnamPro'))),
+                            DropdownMenuItem(
+                                value: '7days',
+                                child: Text('7 ngày qua',
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontFamily: 'BeVietnamPro'))),
                           ],
-                          onChanged: (val) => setState(() => _dateFilter = val ?? 'all'),
+                          onChanged: (val) =>
+                              setState(() => _dateFilter = val ?? 'all'),
                         ),
                       ),
                     ),
@@ -227,7 +252,9 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
               stream: reportsStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  return const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.ownerAccent));
                 }
 
                 if (snapshot.hasError) {
@@ -236,7 +263,9 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                       padding: const EdgeInsets.all(20),
                       child: Text(
                         'Lỗi tải danh sách báo cáo: ${snapshot.error}',
-                        style: const TextStyle(color: AppColors.danger, fontFamily: 'BeVietnamPro'),
+                        style: const TextStyle(
+                            color: AppColors.danger,
+                            fontFamily: 'BeVietnamPro'),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -247,20 +276,25 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
 
                 // Filter by Manager on duty
                 if (_selectedManagerId != null) {
-                  reports = reports.where((r) => r.managerOnDutyId == _selectedManagerId).toList();
+                  reports = reports
+                      .where((r) => r.managerOnDutyId == _selectedManagerId)
+                      .toList();
                 }
 
                 // Filter by Date
                 final now = DateTime.now();
                 if (_dateFilter == 'today') {
-                  reports = reports.where((r) =>
-                    r.startedAt.year == now.year &&
-                    r.startedAt.month == now.month &&
-                    r.startedAt.day == now.day
-                  ).toList();
+                  reports = reports
+                      .where((r) =>
+                          r.startedAt.year == now.year &&
+                          r.startedAt.month == now.month &&
+                          r.startedAt.day == now.day)
+                      .toList();
                 } else if (_dateFilter == '7days') {
                   final sevenDaysAgo = now.subtract(const Duration(days: 7));
-                  reports = reports.where((r) => r.startedAt.isAfter(sevenDaysAgo)).toList();
+                  reports = reports
+                      .where((r) => r.startedAt.isAfter(sevenDaysAgo))
+                      .toList();
                 }
 
                 // Filter by Status
@@ -275,7 +309,8 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey.shade400),
+                        Icon(Icons.inventory_2_outlined,
+                            size: 56, color: Colors.grey.shade400),
                         const SizedBox(height: 12),
                         const Text(
                           'Không tìm thấy báo cáo phù hợp.',
@@ -300,14 +335,16 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                   itemBuilder: (context, index) {
                     final report = reports[index];
                     final dateStr = dateFmt.format(report.startedAt);
-                    final timeStr = '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
+                    final timeStr =
+                        '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
 
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ReportDetailScreen(report: report),
+                            builder: (_) => InheritedTheme.captureAll(
+                                context, ReportDetailScreen(report: report)),
                           ),
                         );
                       },
@@ -318,11 +355,16 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: report.isViewed ? Colors.transparent : AppColors.primary.withOpacity(0.3),
+                            color: report.isViewed
+                                ? Colors.transparent
+                                : AppColors.ownerAccent.withOpacity(0.3),
                             width: report.isViewed ? 0 : 1.2,
                           ),
                           boxShadow: const [
-                            BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3)),
+                            BoxShadow(
+                                color: Color(0x08000000),
+                                blurRadius: 10,
+                                offset: Offset(0, 3)),
                           ],
                         ),
                         child: Column(
@@ -342,9 +384,13 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: report.isViewed ? Colors.grey.shade100 : AppColors.primary.withOpacity(0.12),
+                                    color: report.isViewed
+                                        ? Colors.grey.shade100
+                                        : AppColors.ownerAccent
+                                            .withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -356,7 +402,7 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                                           height: 6,
                                           decoration: const BoxDecoration(
                                             shape: BoxShape.circle,
-                                            color: AppColors.primary,
+                                            color: AppColors.ownerAccent,
                                           ),
                                         ),
                                         const SizedBox(width: 4),
@@ -366,7 +412,9 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
-                                          color: report.isViewed ? Colors.grey.shade600 : AppColors.primary,
+                                          color: report.isViewed
+                                              ? Colors.grey.shade600
+                                              : AppColors.ownerAccent,
                                           fontFamily: 'BeVietnamPro',
                                         ),
                                       ),
@@ -378,7 +426,8 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.person_rounded, size: 14, color: AppColors.info),
+                                const Icon(Icons.person_rounded,
+                                    size: 14, color: AppColors.info),
                                 const SizedBox(width: 6),
                                 Text(
                                   'QL: ${report.managerOnDutyName}',
@@ -406,19 +455,28 @@ class _OwnerReportsTabState extends ConsumerState<OwnerReportsTab> {
                               children: [
                                 _ReportStat(
                                   label: 'Nước',
-                                  avg: PerformanceCalculator.formatSeconds(report.drinkAverageSeconds),
+                                  avg: PerformanceCalculator.formatSeconds(
+                                      report.drinkAverageSeconds),
                                   total: '${report.drinkTotalQuantity} ly',
                                 ),
-                                Container(width: 1, height: 28, color: AppColors.border),
+                                Container(
+                                    width: 1,
+                                    height: 28,
+                                    color: AppColors.border),
                                 _ReportStat(
                                   label: 'Bánh',
-                                  avg: PerformanceCalculator.formatSeconds(report.cakeAverageSeconds),
+                                  avg: PerformanceCalculator.formatSeconds(
+                                      report.cakeAverageSeconds),
                                   total: '${report.cakeTotalQuantity} bánh',
                                 ),
-                                Container(width: 1, height: 28, color: AppColors.border),
+                                Container(
+                                    width: 1,
+                                    height: 28,
+                                    color: AppColors.border),
                                 _ReportStat(
                                   label: 'Đơn',
-                                  avg: PerformanceCalculator.formatSeconds(report.orderAverageSeconds),
+                                  avg: PerformanceCalculator.formatSeconds(
+                                      report.orderAverageSeconds),
                                   total: '${report.orderCount} đơn',
                                 ),
                               ],
@@ -459,13 +517,11 @@ class _StatusPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isAccent ? AppColors.primary : AppColors.neutral)
+              ? (isAccent ? AppColors.ownerAccent : AppColors.neutral)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : AppColors.border,
+            color: isSelected ? Colors.transparent : AppColors.border,
           ),
         ),
         child: Text(
@@ -487,7 +543,8 @@ class _ReportStat extends StatelessWidget {
   final String avg;
   final String total;
 
-  const _ReportStat({required this.label, required this.avg, required this.total});
+  const _ReportStat(
+      {required this.label, required this.avg, required this.total});
 
   @override
   Widget build(BuildContext context) {
@@ -495,15 +552,27 @@ class _ReportStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.neutral,
+              fontFamily: 'BeVietnamPro'),
         ),
         Text(
           avg,
-          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFamily: 'BeVietnamPro', color: AppColors.neutral),
+          style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'BeVietnamPro',
+              color: AppColors.neutral),
         ),
         Text(
           total,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+          style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              fontFamily: 'BeVietnamPro'),
         ),
       ],
     );

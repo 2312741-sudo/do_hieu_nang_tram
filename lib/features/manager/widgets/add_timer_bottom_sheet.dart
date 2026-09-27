@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/category_timer_theme.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_session_model.dart';
 import '../../session/providers/timer_service.dart';
@@ -99,6 +100,7 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final session = ref.watch(activeSessionProvider).valueOrNull;
     final deptStaffName = _getDepartmentStaffName(session);
+    final theme = CategoryTimerTheme.of(widget.category);
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
@@ -129,16 +131,12 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: theme.badgeBg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  widget.category == PerformanceCategory.drink
-                      ? Icons.local_cafe_rounded
-                      : (widget.category == PerformanceCategory.cake
-                          ? Icons.cake_rounded
-                          : Icons.receipt_long_rounded),
-                  color: AppColors.primary,
+                  theme.icon,
+                  color: theme.accent,
                   size: 22,
                 ),
               ),
@@ -159,7 +157,7 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
                     const SizedBox(height: 2),
                     Text(
                       widget.category == PerformanceCategory.order
-                          ? 'Nhập mã đơn trước khi bắt đầu.'
+                          ? 'Bắt đầu đo ngay, nhập mã đơn sau trên thẻ timer.'
                           : 'Nhập số lượng ${widget.category.label.toLowerCase()} trước khi bắt đầu.',
                       style: const TextStyle(
                         fontSize: 13,
@@ -174,31 +172,8 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
           ),
           const SizedBox(height: 24),
 
-          if (widget.category == PerformanceCategory.order) ...[
-            // Đơn hàng: Mã đơn
-            const Text(
-              'Mã đơn hàng',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'BeVietnamPro',
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _orderCodeCtrl,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: InputDecoration(
-                hintText: 'Ví dụ: 104-382',
-                prefixIcon: const Icon(Icons.confirmation_number_rounded, size: 20),
-                errorText: _errorMessage,
-              ),
-              onSubmitted: (_) => _handleStart(),
-            ),
-          ] else ...[
-            // Nước & Bánh: Stepper số lượng
+          // Nước & Bánh: Stepper số lượng
+          if (widget.category != PerformanceCategory.order) ...[
             Text(
               'Số lượng ${widget.category.label.toLowerCase()}',
               style: const TextStyle(
@@ -258,6 +233,19 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
             ],
           ],
 
+          if (_errorMessage != null && widget.category == PerformanceCategory.order) ...[
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(
+                color: AppColors.danger,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'BeVietnamPro',
+              ),
+            ),
+          ],
+
           if (deptStaffName != null) ...[
             const SizedBox(height: 18),
             Container(
@@ -303,7 +291,7 @@ class _AddTimerBottomSheetState extends ConsumerState<AddTimerBottomSheet> {
           ElevatedButton(
             onPressed: _isLoading ? null : _handleStart,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: theme.accent,
               foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 54),
               shape: RoundedRectangleBorder(

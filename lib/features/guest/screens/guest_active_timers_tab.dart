@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/category_timer_theme.dart';
 import '../models/guest_measurement_model.dart';
 import '../providers/guest_providers.dart';
 
@@ -263,143 +264,219 @@ class _GuestTimerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color catColor;
-    IconData catIcon;
-    String catLabel;
-
-    switch (measurement.category) {
-      case PerformanceCategory.drink:
-        catColor = const Color(0xFF0284C7); // blue
-        catIcon = Icons.local_cafe;
-        catLabel = 'Nước';
-        break;
-      case PerformanceCategory.cake:
-        catColor = const Color(0xFFD97706); // amber
-        catIcon = Icons.cake;
-        catLabel = 'Bánh';
-        break;
-      case PerformanceCategory.order:
-        catColor = AppColors.info; // navy
-        catIcon = Icons.receipt_long;
-        catLabel = 'Đơn hàng';
-        break;
-    }
-
+    final theme = CategoryTimerTheme.of(measurement.category);
     final isRunning = measurement.status == MeasurementStatus.running;
 
-    return Card(
-      color: AppColors.white,
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
+      decoration: BoxDecoration(
+        color: theme.background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isRunning ? theme.border : AppColors.accent.withOpacity(0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.accent.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: catColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(catIcon, color: catColor),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$catLabel (x${measurement.quantity})',
-                        style: const TextStyle(
-                          fontFamily: 'BeVietnamPro',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: AppColors.neutral,
-                        ),
-                      ),
-                      if (measurement.orderCode != null &&
-                          measurement.orderCode!.isNotEmpty)
-                        Text(
-                          'Mã đơn: ${measurement.orderCode}',
-                          style: const TextStyle(
-                            fontFamily: 'BeVietnamPro',
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isRunning
-                        ? AppColors.success.withOpacity(0.1)
-                        : AppColors.accent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    isRunning ? 'Đang chạy' : 'Tạm dừng',
-                    style: TextStyle(
-                      fontFamily: 'BeVietnamPro',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isRunning ? AppColors.success : AppColors.accent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Text(
-                _formatTime(measurement.elapsedSeconds),
-                style: const TextStyle(
-                  fontFamily: 'BeVietnamPro',
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.neutral,
-                ),
+            // Left Category Color Bar
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 6,
+              child: Container(
+                color: theme.accent,
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                IconButton(
-                  onPressed: onCancel,
-                  icon: const Icon(Icons.close, color: AppColors.primary),
-                  tooltip: 'Hủy',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+
+            // Card Body
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.badgeBg,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(theme.icon, color: theme.accent, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(
+                                    color: theme.badgeBg,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    theme.label.toUpperCase(),
+                                    style: TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: theme.badgeText,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    '${theme.label} (x${measurement.quantity})',
+                                    style: const TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppColors.neutral,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (measurement.orderCode != null &&
+                                measurement.orderCode!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Mã đơn: ${measurement.orderCode}',
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isRunning
+                              ? theme.badgeBg
+                              : AppColors.accent.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isRunning
+                                ? theme.border
+                                : AppColors.accent.withOpacity(0.35),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color:
+                                    isRunning ? theme.accent : AppColors.accent,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isRunning ? 'Đang chạy' : 'Tạm dừng',
+                              style: TextStyle(
+                                fontFamily: 'BeVietnamPro',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: isRunning
+                                    ? theme.badgeText
+                                    : AppColors.accent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                IconButton(
-                  onPressed: isRunning ? onPause : onResume,
-                  icon: Icon(
-                    isRunning ? Icons.pause : Icons.play_arrow,
-                    color: AppColors.info,
+                  const SizedBox(height: 14),
+
+                  // Central Stopwatch Box
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 26, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: theme.stopwatchBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.border.withOpacity(0.8),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        _formatTime(measurement.elapsedSeconds),
+                        style: TextStyle(
+                          fontFamily: 'BeVietnamPro',
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: isRunning
+                              ? theme.stopwatchText
+                              : AppColors.accent,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
                   ),
-                  tooltip: isRunning ? 'Tạm dừng' : 'Tiếp tục',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.info.withOpacity(0.1),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        onPressed: onCancel,
+                        icon: const Icon(Icons.close, color: AppColors.primary),
+                        tooltip: 'Hủy',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: isRunning ? onPause : onResume,
+                        icon: Icon(
+                          isRunning ? Icons.pause : Icons.play_arrow,
+                          color: AppColors.info,
+                        ),
+                        tooltip: isRunning ? 'Tạm dừng' : 'Tiếp tục',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.info.withOpacity(0.1),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: onComplete,
+                        icon: const Icon(Icons.check, color: AppColors.success),
+                        tooltip: 'Hoàn thành',
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.success.withOpacity(0.1),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                IconButton(
-                  onPressed: onComplete,
-                  icon: const Icon(Icons.check, color: AppColors.success),
-                  tooltip: 'Hoàn thành',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.success.withOpacity(0.1),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

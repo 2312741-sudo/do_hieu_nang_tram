@@ -20,40 +20,52 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(performanceTimerProvider);
+    final remoteAll = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
+    final activeTimers = ref.watch(activeSessionTimersProvider);
+
     final currentUid = ref.watch(currentUserIdProvider);
-    final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
-    final activeTimers = allMeasurements.where((m) => m.status.isActive).toList();
 
     var baseTimers = activeTimers;
     if (_onlyMyTimers && currentUid != null) {
       baseTimers = baseTimers.where((m) => m.userId == currentUid).toList();
     }
 
-    final drinkCount = baseTimers.where((m) => m.category == PerformanceCategory.drink).length;
-    final cakeCount = baseTimers.where((m) => m.category == PerformanceCategory.cake).length;
-    final orderCount = baseTimers.where((m) => m.category == PerformanceCategory.order).length;
+    final drinkCount =
+        baseTimers.where((m) => m.category == PerformanceCategory.drink).length;
+    final cakeCount =
+        baseTimers.where((m) => m.category == PerformanceCategory.cake).length;
+    final orderCount =
+        baseTimers.where((m) => m.category == PerformanceCategory.order).length;
 
     final filteredTimers = _selectedCategory == null
         ? baseTimers
         : baseTimers.where((m) => m.category == _selectedCategory).toList();
 
-    final myActiveCount = currentUid != null ? activeTimers.where((m) => m.userId == currentUid).length : 0;
+    final myActiveCount = currentUid != null
+        ? activeTimers.where((m) => m.userId == currentUid).length
+        : 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // Header — Navy style
+          // Header follows the active role theme
           SliverToBoxAdapter(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF1C4E6B), Color(0xFF0A3247)],
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary ==
+                            AppColors.ownerAccent
+                        ? AppColors.ownerAccentDark
+                        : AppColors.managerAccentDark
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(32)),
               ),
               child: SafeArea(
                 bottom: false,
@@ -109,25 +121,32 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
                             _FilterPill(
                               label: 'Tất cả (${baseTimers.length})',
                               isSelected: _selectedCategory == null,
-                              onTap: () => setState(() => _selectedCategory = null),
+                              onTap: () =>
+                                  setState(() => _selectedCategory = null),
                             ),
                             const SizedBox(width: 8),
                             _FilterPill(
                               label: 'Nước ($drinkCount)',
-                              isSelected: _selectedCategory == PerformanceCategory.drink,
-                              onTap: () => setState(() => _selectedCategory = PerformanceCategory.drink),
+                              isSelected: _selectedCategory ==
+                                  PerformanceCategory.drink,
+                              onTap: () => setState(() => _selectedCategory =
+                                  PerformanceCategory.drink),
                             ),
                             const SizedBox(width: 8),
                             _FilterPill(
                               label: 'Bánh ($cakeCount)',
-                              isSelected: _selectedCategory == PerformanceCategory.cake,
-                              onTap: () => setState(() => _selectedCategory = PerformanceCategory.cake),
+                              isSelected:
+                                  _selectedCategory == PerformanceCategory.cake,
+                              onTap: () => setState(() =>
+                                  _selectedCategory = PerformanceCategory.cake),
                             ),
                             const SizedBox(width: 8),
                             _FilterPill(
                               label: 'Đơn ($orderCount)',
-                              isSelected: _selectedCategory == PerformanceCategory.order,
-                              onTap: () => setState(() => _selectedCategory = PerformanceCategory.order),
+                              isSelected: _selectedCategory ==
+                                  PerformanceCategory.order,
+                              onTap: () => setState(() => _selectedCategory =
+                                  PerformanceCategory.order),
                             ),
                           ],
                         ),
@@ -153,7 +172,8 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.timer_off_outlined, size: 52, color: Colors.grey.shade400),
+                          Icon(Icons.timer_off_outlined,
+                              size: 52, color: Colors.grey.shade400),
                           const SizedBox(height: 12),
                           const Text(
                             'Không có timer nào đang chạy',
@@ -183,38 +203,60 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
                         if (_selectedCategory == null) ...[
                           // Grouped display
                           if (drinkCount > 0) ...[
-                            _SectionGroupTitle(title: 'NƯỚC ($drinkCount)'),
-                            ...activeTimers
-                                .where((m) => m.category == PerformanceCategory.drink)
+                            _SectionGroupTitle(
+                              title: 'NƯỚC ($drinkCount)',
+                              color: AppColors.categoryDrink,
+                              icon: Icons.local_cafe_rounded,
+                            ),
+                            ...baseTimers
+                                .where((m) =>
+                                    m.category == PerformanceCategory.drink)
                                 .map((t) => TimerCard(
                                       timer: t,
-                                      itemNumber: PerformanceCalculator.getCategorySequenceNumber(t, allMeasurements),
+                                      itemNumber: PerformanceCalculator
+                                          .getCategorySequenceNumber(
+                                              t, remoteAll),
                                     )),
                             const SizedBox(height: 16),
                           ],
                           if (cakeCount > 0) ...[
-                            _SectionGroupTitle(title: 'BÁNH ($cakeCount)'),
-                            ...activeTimers
-                                .where((m) => m.category == PerformanceCategory.cake)
+                            _SectionGroupTitle(
+                              title: 'BÁNH ($cakeCount)',
+                              color: AppColors.categoryCake,
+                              icon: Icons.cake_rounded,
+                            ),
+                            ...baseTimers
+                                .where((m) =>
+                                    m.category == PerformanceCategory.cake)
                                 .map((t) => TimerCard(
                                       timer: t,
-                                      itemNumber: PerformanceCalculator.getCategorySequenceNumber(t, allMeasurements),
+                                      itemNumber: PerformanceCalculator
+                                          .getCategorySequenceNumber(
+                                              t, remoteAll),
                                     )),
                             const SizedBox(height: 16),
                           ],
                           if (orderCount > 0) ...[
-                            _SectionGroupTitle(title: 'ĐƠN HÀNG ($orderCount)'),
-                            ...activeTimers
-                                .where((m) => m.category == PerformanceCategory.order)
+                            _SectionGroupTitle(
+                              title: 'ĐƠN HÀNG ($orderCount)',
+                              color: AppColors.categoryOrder,
+                              icon: Icons.receipt_long_rounded,
+                            ),
+                            ...baseTimers
+                                .where((m) =>
+                                    m.category == PerformanceCategory.order)
                                 .map((t) => TimerCard(
                                       timer: t,
-                                      itemNumber: PerformanceCalculator.getCategorySequenceNumber(t, allMeasurements),
+                                      itemNumber: PerformanceCalculator
+                                          .getCategorySequenceNumber(
+                                              t, remoteAll),
                                     )),
                           ],
                         ] else ...[
                           ...filteredTimers.map((t) => TimerCard(
                                 timer: t,
-                                itemNumber: PerformanceCalculator.getCategorySequenceNumber(t, allMeasurements),
+                                itemNumber: PerformanceCalculator
+                                    .getCategorySequenceNumber(t, remoteAll),
                               )),
                         ],
                       ],
@@ -229,22 +271,57 @@ class _ActiveTimersTabState extends ConsumerState<ActiveTimersTab> {
 
 class _SectionGroupTitle extends StatelessWidget {
   final String title;
+  final Color? color;
+  final IconData? icon;
 
-  const _SectionGroupTitle({required this.title});
+  const _SectionGroupTitle({
+    required this.title,
+    this.color,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, top: 6),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          fontFamily: 'BeVietnamPro',
-          color: AppColors.textSecondary,
-          letterSpacing: 0.5,
-        ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: (color ?? AppColors.primary).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                size: 14,
+                color: color ?? AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ] else if (color != null) ...[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'BeVietnamPro',
+              color: color ?? AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }

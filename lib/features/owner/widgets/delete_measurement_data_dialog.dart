@@ -153,7 +153,8 @@ class _DeleteMeasurementDataDialogState
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 24),
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.danger, size: 24),
             SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -222,14 +223,16 @@ class _DeleteMeasurementDataDialogState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('HỦY', style: TextStyle(fontFamily: 'BeVietnamPro')),
+            child:
+                const Text('HỦY', style: TextStyle(fontFamily: 'BeVietnamPro')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.danger,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text(
               'XÓA NGAY',
@@ -296,7 +299,7 @@ class _DeleteMeasurementDataDialogState
 
   @override
   Widget build(BuildContext context) {
-    final stores = ref.watch(userStoresProvider).valueOrNull ?? [];
+    final stores = ref.watch(performanceAccessibleStoresProvider);
     final (_, _, timeLabel) = _getDateRangeInfo();
 
     return AlertDialog(
@@ -390,7 +393,9 @@ class _DeleteMeasurementDataDialogState
                     onChanged: _isDeleting
                         ? null
                         : (val) {
-                            if (val != null) setState(() => _selectedStoreId = val);
+                            if (val != null) {
+                              setState(() => _selectedStoreId = val);
+                            }
                           },
                   ),
                 ),
@@ -438,7 +443,8 @@ class _DeleteMeasurementDataDialogState
                 label: const Text('Chọn', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   minimumSize: Size.zero,
                 ),
               ),
@@ -464,7 +470,8 @@ class _DeleteMeasurementDataDialogState
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primary),
+                  const Icon(Icons.info_outline_rounded,
+                      size: 16, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -500,7 +507,8 @@ class _DeleteMeasurementDataDialogState
             backgroundColor: AppColors.danger,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           child: _isDeleting
               ? const SizedBox(
@@ -546,7 +554,8 @@ class _DeleteMeasurementDataDialogState
           ? null
           : () {
               setState(() => _selectedType = type);
-              if (type == DeleteTimeframeType.customRange && _customDateRange == null) {
+              if (type == DeleteTimeframeType.customRange &&
+                  _customDateRange == null) {
                 _pickCustomRange();
               }
             },
@@ -555,7 +564,9 @@ class _DeleteMeasurementDataDialogState
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDestructive ? Colors.red.shade50 : AppColors.primary.withOpacity(0.06))
+              ? (isDestructive
+                  ? Colors.red.shade50
+                  : AppColors.primary.withOpacity(0.06))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -584,8 +595,11 @@ class _DeleteMeasurementDataDialogState
                     style: TextStyle(
                       fontFamily: 'BeVietnamPro',
                       fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isDestructive && isSelected ? AppColors.danger : AppColors.neutral,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isDestructive && isSelected
+                          ? AppColors.danger
+                          : AppColors.neutral,
                     ),
                   ),
                   Text(

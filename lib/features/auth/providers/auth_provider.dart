@@ -31,14 +31,14 @@ final currentUserProvider = StreamProvider<UserModel?>((ref) {
 /// Quản lý trạng thái chọn cửa hàng RIÊNG BIỆT của app Đo Hiệu Năng:
 /// Lưu trong SharedPreferences local, TUYỆT ĐỐI KHÔNG ghi đè users/{uid}.currentStoreId trên Firestore
 class PerformanceStoreNotifier extends StateNotifier<String?> {
-  final Ref _ref;
+  final String? _userId;
 
-  PerformanceStoreNotifier(this._ref) : super(null) {
+  PerformanceStoreNotifier(this._userId) : super(null) {
     _init();
   }
 
   Future<void> _init() async {
-    final uid = _ref.read(currentUserIdProvider);
+    final uid = _userId;
     if (uid != null) {
       final prefs = await SharedPreferences.getInstance();
       final savedStoreId = prefs.getString('perf_store_$uid');
@@ -50,7 +50,7 @@ class PerformanceStoreNotifier extends StateNotifier<String?> {
 
   Future<void> selectStore(String storeId) async {
     state = storeId;
-    final uid = _ref.read(currentUserIdProvider);
+    final uid = _userId;
     if (uid != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('perf_store_$uid', storeId);
@@ -60,13 +60,23 @@ class PerformanceStoreNotifier extends StateNotifier<String?> {
 
 final performanceSelectedStoreIdProvider =
     StateNotifierProvider<PerformanceStoreNotifier, String?>((ref) {
-  return PerformanceStoreNotifier(ref);
+  final userId = ref.watch(currentUserIdProvider);
+  return PerformanceStoreNotifier(userId);
 });
 
 final currentStoreIdProvider = Provider<String?>((ref) {
-  // 1. Ưu tiên cửa hàng được chọn riêng cho Đo Hiệu Năng trong SharedPreferences
+  final storesWithRole = ref.watch(userStoresWithRoleProvider).valueOrNull;
+  if (storesWithRole == null) return null;
+
+  final accessibleStoreIds = storesWithRole
+      .where((item) => item.role == UserRole.owner || item.role.isManager)
+      .map((item) => item.store.id)
+      .toSet();
+  if (accessibleStoreIds.isEmpty) return null;
+
+  // 1. Chỉ dùng lựa chọn local nếu tài khoản còn quyền đo tại cửa hàng đó.
   final perfStoreId = ref.watch(performanceSelectedStoreIdProvider);
-  if (perfStoreId != null && perfStoreId.isNotEmpty) {
+  if (perfStoreId != null && accessibleStoreIds.contains(perfStoreId)) {
     return perfStoreId;
   }
 
@@ -75,14 +85,11 @@ final currentStoreIdProvider = Provider<String?>((ref) {
   if (user == null) return null;
 
   if (user.currentStoreId != null && user.currentStoreId!.isNotEmpty) {
-    if (user.storeIds.isEmpty || user.storeIds.contains(user.currentStoreId)) {
+    if (accessibleStoreIds.contains(user.currentStoreId)) {
       return user.currentStoreId;
     }
   }
-  if (user.storeIds.isNotEmpty) {
-    return user.storeIds.first;
-  }
-  return null;
+  return accessibleStoreIds.first;
 });
 
 final currentStoreProvider = StreamProvider<StoreModel?>((ref) {
@@ -94,15 +101,26 @@ final currentStoreProvider = StreamProvider<StoreModel?>((ref) {
 final userStoresProvider = FutureProvider<List<StoreModel>>((ref) async {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return [];
-  ref.watch(currentUserProvider);
+  ref.watch(currentUserProvider.select((u) => u.valueOrNull?.currentStoreId));
   return ref.watch(authRepositoryProvider).getUserStores(uid);
 });
 
-final userStoresWithRoleProvider = FutureProvider<List<UserStoreWithRole>>((ref) async {
+final userStoresWithRoleProvider =
+    FutureProvider<List<UserStoreWithRole>>((ref) async {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return [];
-  ref.watch(currentUserProvider);
+  ref.watch(currentUserProvider.select((u) => u.valueOrNull?.currentStoreId));
   return ref.watch(authRepositoryProvider).getUserStoresWithRoles(uid);
+});
+
+/// Các cửa hàng mà app Đo Hiệu Năng được phép đọc/ghi dữ liệu hiệu năng.
+final performanceAccessibleStoresProvider = Provider<List<StoreModel>>((ref) {
+  final storesWithRole =
+      ref.watch(userStoresWithRoleProvider).valueOrNull ?? [];
+  return storesWithRole
+      .where((item) => item.role == UserRole.owner || item.role.isManager)
+      .map((item) => item.store)
+      .toList();
 });
 
 final currentMemberProvider = StreamProvider<MemberModel?>((ref) {
@@ -123,20 +141,15 @@ final currentRoleProvider = Provider<UserRole?>((ref) {
 
   final isStoreOwner = store.ownerId.trim() == uid.trim();
 
-  // 1. Nếu member doc chưa tải hoặc không tồn tại, nhưng store.ownerId == uid -> Chủ quán
-  if (member == null) {
-    return isStoreOwner ? UserRole.owner : null;
-  }
+  if (isStoreOwner) return UserRole.owner;
+
+  // Chỉ thành viên active mới có quyền vào app đo hiệu năng.
+  if (member == null || !member.isActive) return null;
 
   // 2. PERMISSION TRUTH RECONCILIATION:
   // Nếu member doc ghi role == owner, nhưng store.ownerId KHÁC uid -> hạ quyền xuống manager1 (chống chiếm quyền)
   if (member.role == UserRole.owner) {
-    return isStoreOwner ? UserRole.owner : UserRole.manager1;
-  }
-
-  // 3. Nếu store.ownerId khớp uid -> luôn bảo vệ quyền Chủ tối cao
-  if (isStoreOwner) {
-    return UserRole.owner;
+    return UserRole.manager1;
   }
 
   // 4. Các role thông thường (manager1, manager2, legacyManager, employee)
@@ -167,12 +180,18 @@ final storeMembersProvider = StreamProvider<List<MemberModel>>((ref) {
 /// Danh sách Quản lý / Chủ quán của cửa hàng (dành cho ô chọn Quản lý đứng ca - Single select)
 final storeManagersProvider = Provider<List<MemberModel>>((ref) {
   final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
-  return members.where((m) => (m.role.isManager || m.role.isOwner) && m.isActive).toList();
+  return members
+      .where((m) => (m.role.isManager || m.role.isOwner) && m.isActive)
+      .toList();
 });
 
 /// Danh sách Nhân sự trong ca (dành cho ô chọn Nhân viên trong ca - Multi select)
 /// Hiển thị cả Nhân viên, Quản lý và Chủ cửa hàng trong ca
 final storeShiftStaffProvider = Provider<List<MemberModel>>((ref) {
   final members = ref.watch(storeMembersProvider).valueOrNull ?? [];
-  return members.where((m) => (m.role.isEmployee || m.role.isManager || m.role.isOwner) && m.isActive).toList();
+  return members
+      .where((m) =>
+          (m.role.isEmployee || m.role.isManager || m.role.isOwner) &&
+          m.isActive)
+      .toList();
 });

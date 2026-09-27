@@ -129,8 +129,8 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
+            colorScheme: ColorScheme.light(
+              primary: Theme.of(context).colorScheme.primary,
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: AppColors.neutral,
@@ -227,7 +227,7 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
         final dateSubtitle = _getDateFilterSubtitle();
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF5F6FA),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0.5,
@@ -247,13 +247,13 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
             ),
             actions: [
               if (_isExporting)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Center(
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.primary),
                     ),
                   ),
                 )
@@ -286,9 +286,9 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  indicatorColor: AppColors.primary,
+                  indicatorColor: Theme.of(context).colorScheme.primary,
                   indicatorWeight: 3,
-                  labelColor: AppColors.primary,
+                  labelColor: Theme.of(context).colorScheme.primary,
                   unselectedLabelColor: AppColors.textSecondary,
                   labelStyle: const TextStyle(
                     fontSize: 13,
@@ -369,12 +369,12 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
                   ),
                 ),
                 selected: isSelected,
-                selectedColor: AppColors.primary,
+                selectedColor: Theme.of(context).colorScheme.primary,
                 backgroundColor: Colors.grey.shade100,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
-                    color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                    color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
                   ),
                 ),
                 onSelected: (val) {
@@ -422,15 +422,15 @@ class _StaffLeaderboardScreenState extends ConsumerState<StaffLeaderboardScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '$sessionCount ca',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
+                          color: Theme.of(context).colorScheme.primary,
                           fontFamily: 'BeVietnamPro',
                         ),
                       ),

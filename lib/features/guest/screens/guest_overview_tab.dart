@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/category_timer_theme.dart';
 import '../../../core/utils/performance_calculator.dart';
 import '../models/guest_session_model.dart';
 import '../models/guest_measurement_model.dart';
@@ -553,10 +554,184 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
     );
   }
 
+  Widget _buildActiveTimersSection(List<GuestMeasurementModel> activeTimers) {
+    if (activeTimers.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_rounded, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
+            Text(
+              'ĐANG ĐO TRỰC TIẾP (${activeTimers.length})',
+              style: const TextStyle(
+                fontFamily: 'BeVietnamPro',
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...activeTimers.map((m) {
+          final elapsed = m.elapsedSeconds;
+          final minutes = (elapsed ~/ 60).toString().padLeft(2, '0');
+          final seconds = (elapsed % 60).toString().padLeft(2, '0');
+          final timeStr = '$minutes:$seconds';
+          final theme = CategoryTimerTheme.of(m.category);
+          final isPaused = m.status == MeasurementStatus.paused;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: theme.background,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isPaused ? AppColors.accent.withOpacity(0.5) : theme.border,
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.accent.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 5,
+                    child: Container(color: theme.accent),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.badgeBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(theme.icon, size: 18, color: theme.accent),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${theme.label} #${m.quantity}${m.orderCode != null ? ' · ${m.orderCode}' : ''}',
+                                style: const TextStyle(
+                                  fontFamily: 'BeVietnamPro',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.neutral,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  if (isPaused)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      margin: const EdgeInsets.only(right: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        'Tạm dừng',
+                                        style: TextStyle(
+                                          fontFamily: 'BeVietnamPro',
+                                          fontSize: 11,
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  Text(
+                                    timeStr,
+                                    style: TextStyle(
+                                      fontFamily: 'BeVietnamPro',
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      color: isPaused ? AppColors.accent : theme.stopwatchText,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Quick actions: pause/resume + complete
+                        if (isPaused)
+                          IconButton(
+                            icon: const Icon(Icons.play_arrow_rounded, color: AppColors.primary),
+                            tooltip: 'Tiếp tục',
+                            onPressed: () => ref.read(guestTimerProvider.notifier).resumeTimer(m.id),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.pause_rounded, color: AppColors.textSecondary),
+                            tooltip: 'Tạm dừng',
+                            onPressed: () => ref.read(guestTimerProvider.notifier).pauseTimer(m.id),
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.check_circle_outline_rounded, color: AppColors.success),
+                          tooltip: 'Hoàn thành',
+                          onPressed: () async {
+                            final completed =
+                                await ref.read(guestTimerProvider.notifier).completeTimer(m.id);
+                            if (completed != null) {
+                              final session = ref.read(guestActiveSessionProvider);
+                              if (session != null) {
+                                final list = List<GuestMeasurementModel>.from(
+                                  ref.read(guestSessionMeasurementsProvider),
+                                );
+                                final idx = list.indexWhere((item) => item.id == completed.id);
+                                if (idx != -1) {
+                                  list[idx] = completed;
+                                } else {
+                                  list.add(completed);
+                                }
+                                ref.read(guestSessionMeasurementsProvider.notifier).state = list;
+                                await ref
+                                    .read(guestLocalRepositoryProvider)
+                                    .saveMeasurements(session.id, list);
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(guestActiveSessionProvider);
     final measurements = ref.watch(guestSessionMeasurementsProvider);
+    final activeTimers = ref.watch(guestTimerProvider).activeTimers;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -627,9 +802,9 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF0284C7),
+                                  foregroundColor: AppColors.categoryDrink,
                                   side: const BorderSide(
-                                    color: Color(0xFF0284C7),
+                                    color: AppColors.categoryDrink,
                                     width: 1.5,
                                   ),
                                   shape: RoundedRectangleBorder(
@@ -699,7 +874,10 @@ class _GuestOverviewTabState extends ConsumerState<GuestOverviewTab> {
                           ),
                           const SizedBox(height: 16),
 
-                          // 3. Personnel on duty (Locked)
+                          // 3. Active timers (ticking in real-time)
+                          _buildActiveTimersSection(activeTimers),
+
+                          // 4. Personnel on duty (Locked)
                           GuestPersonnelSelector(
                             selectedManagerIndex: session.managerOnDutyIndex,
                             selectedEmployeeIndexes: session.employeeIndexes,

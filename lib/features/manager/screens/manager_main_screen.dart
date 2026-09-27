@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../models/measurement_model.dart';
+import '../../../core/theme/performance_role_theme.dart';
 import '../../session/providers/timer_service.dart';
 import 'manager_overview_tab.dart';
 import 'active_timers_tab.dart';
@@ -19,58 +19,59 @@ class _ManagerMainScreenState extends ConsumerState<ManagerMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(performanceTimerProvider);
-    final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
-    final activeCount = allMeasurements.where((m) => m.status.isActive).length;
+    final activeCount = ref.watch(activeSessionTimersProvider).length;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: [
-          ManagerOverviewTab(
-            onNavigateToActiveTimers: () => setState(() => _currentIndex = 1),
-          ),
-          const ActiveTimersTab(),
-          const SessionHistoryTab(),
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 16,
-              offset: Offset(0, -4),
+    return Theme(
+      data: PerformanceRoleTheme.manager(context),
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: [
+            ManagerOverviewTab(
+              onNavigateToActiveTimers: () => setState(() => _currentIndex = 1),
             ),
+            const ActiveTimersTab(),
+            const SessionHistoryTab(),
           ],
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(
-                  icon: Icons.dashboard_rounded,
-                  label: 'Tổng quan',
-                  isSelected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
-                ),
-                _NavItem(
-                  icon: Icons.timer_rounded,
-                  label: 'Đang đo',
-                  badgeCount: activeCount,
-                  isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
-                ),
-                _NavItem(
-                  icon: Icons.history_rounded,
-                  label: 'Lịch sử',
-                  isSelected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
-                ),
-              ],
+        bottomNavigationBar: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 16,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _NavItem(
+                    icon: Icons.dashboard_rounded,
+                    label: 'Tổng quan',
+                    isSelected: _currentIndex == 0,
+                    onTap: () => setState(() => _currentIndex = 0),
+                  ),
+                  _NavItem(
+                    icon: Icons.timer_rounded,
+                    label: 'Đang đo',
+                    badgeCount: activeCount,
+                    isSelected: _currentIndex == 1,
+                    onTap: () => setState(() => _currentIndex = 1),
+                  ),
+                  _NavItem(
+                    icon: Icons.history_rounded,
+                    label: 'Lịch sử',
+                    isSelected: _currentIndex == 2,
+                    onTap: () => setState(() => _currentIndex = 2),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -102,7 +103,9 @@ class _NavItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
+          color: isSelected
+              ? AppColors.managerAccent.withOpacity(0.08)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -114,19 +117,23 @@ class _NavItem extends StatelessWidget {
                 Icon(
                   icon,
                   size: 24,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color: isSelected
+                      ? AppColors.managerAccent
+                      : AppColors.textSecondary,
                 ),
                 if (badgeCount > 0)
                   Positioned(
                     right: -8,
                     top: -4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1.5),
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: AppColors.managerAccent,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
                       child: Text(
                         badgeCount > 99 ? '99+' : '$badgeCount',
                         style: const TextStyle(
@@ -147,7 +154,9 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                color: isSelected
+                    ? AppColors.managerAccent
+                    : AppColors.textSecondary,
                 fontFamily: 'BeVietnamPro',
               ),
             ),

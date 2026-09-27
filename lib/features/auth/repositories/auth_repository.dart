@@ -99,7 +99,8 @@ class AuthRepository {
     }
   }
 
-  Future<void> _ensureFirestoreUserExists(User? user, {String? fallbackName}) async {
+  Future<void> _ensureFirestoreUserExists(User? user,
+      {String? fallbackName}) async {
     if (user == null) return;
     final doc = await _firestore.collection('users').doc(user.uid).get();
     if (!doc.exists) {
@@ -114,7 +115,10 @@ class AuthRepository {
         avatarUrl: user.photoURL,
         createdAt: DateTime.now().toUtc(),
       );
-      await _firestore.collection('users').doc(user.uid).set(userModel.toJson());
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .set(userModel.toJson());
     } else {
       final data = doc.data() ?? {};
       final existingAvatar = data['avatarUrl'] as String?;
@@ -182,71 +186,19 @@ class AuthRepository {
   }
 
   Future<List<StoreModel>> getUserStores(String uid) async {
-    try {
-      final userDoc = await _firestore.collection('users').doc(uid).get();
-      final userData = userDoc.data() ?? {};
-      final storeIds = List<String>.from(userData['storeIds'] ?? []);
-      final currentStoreId = userData['currentStoreId'] as String?;
-
-      if (currentStoreId != null &&
-          currentStoreId.isNotEmpty &&
-          !storeIds.contains(currentStoreId)) {
-        storeIds.add(currentStoreId);
-      }
-
-      // Auto-discover stores owned by user
-      try {
-        final ownedStores = await _firestore
-            .collection('stores')
-            .where('ownerId', isEqualTo: uid)
-            .get();
-        for (final doc in ownedStores.docs) {
-          if (!storeIds.contains(doc.id)) {
-            storeIds.add(doc.id);
-          }
-        }
-      } catch (_) {}
-
-      // Auto-discover stores where user is member
-      try {
-        final memberDocs = await _firestore
-            .collectionGroup('members')
-            .where('userId', isEqualTo: uid)
-            .get();
-        for (final doc in memberDocs.docs) {
-          final storeRef = doc.reference.parent.parent;
-          if (storeRef != null && !storeIds.contains(storeRef.id)) {
-            final status = doc.data()['status'] as String?;
-            if (status != 'kicked') {
-              storeIds.add(storeRef.id);
-            }
-          }
-        }
-      } catch (_) {}
-
-      if (storeIds.isEmpty) return [];
-
-      final stores = <StoreModel>[];
-      for (final id in storeIds) {
-        final snap = await _firestore.collection('stores').doc(id).get();
-        if (snap.exists && snap.data() != null) {
-          final store = StoreModel.fromJson(snap.data()!, snap.id);
-          if (!store.isDeleted) {
-            stores.add(store);
-          }
-        }
-      }
-      return stores;
-    } catch (_) {
-      return [];
-    }
+    final storesWithRoles = await getUserStoresWithRoles(uid);
+    return storesWithRoles.map((item) => item.store).toList();
   }
 
   Future<List<UserStoreWithRole>> getUserStoresWithRoles(String uid) async {
     try {
       final userDoc = await _firestore.collection('users').doc(uid).get();
       final userData = userDoc.data() ?? {};
-      final storeIds = List<String>.from(userData['storeIds'] ?? []);
+      final storeIds = <String>{
+        ...List<String>.from(userData['storeIds'] ?? []).where(
+          (id) => id.trim().isNotEmpty,
+        ),
+      };
       final currentStoreId = userData['currentStoreId'] as String?;
 
       if (currentStoreId != null &&
@@ -255,25 +207,34 @@ class AuthRepository {
         storeIds.add(currentStoreId);
       }
 
-      // Auto-discover stores owned by user
-      try {
-        final ownedStores = await _firestore
-            .collection('stores')
-            .where('ownerId', isEqualTo: uid)
-            .get();
+      // Auto-discover stores owned by user and where user is member in parallel
+      final ownedStoresFuture = _firestore
+          .collection('stores')
+          .where('ownerId', isEqualTo: uid)
+          .get()
+          .then<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .catchError((_) => null);
+
+      final memberDocsFuture = _firestore
+          .collectionGroup('members')
+          .where('userId', isEqualTo: uid)
+          .get()
+          .then<QuerySnapshot<Map<String, dynamic>>?>((s) => s)
+          .catchError((_) => null);
+
+      final discoveryResults = await Future.wait([ownedStoresFuture, memberDocsFuture]);
+      final ownedStores = discoveryResults[0];
+      final memberDocs = discoveryResults[1];
+
+      if (ownedStores != null) {
         for (final doc in ownedStores.docs) {
           if (!storeIds.contains(doc.id)) {
             storeIds.add(doc.id);
           }
         }
-      } catch (_) {}
+      }
 
-      // Auto-discover stores where user is member
-      try {
-        final memberDocs = await _firestore
-            .collectionGroup('members')
-            .where('userId', isEqualTo: uid)
-            .get();
+      if (memberDocs != null) {
         for (final doc in memberDocs.docs) {
           final storeRef = doc.reference.parent.parent;
           if (storeRef != null && !storeIds.contains(storeRef.id)) {
@@ -283,77 +244,58 @@ class AuthRepository {
             }
           }
         }
-      } catch (_) {}
+      }
 
       if (storeIds.isEmpty) return [];
 
-      final results = <UserStoreWithRole>[];
-      for (final id in storeIds) {
-        final snap = await _firestore.collection('stores').doc(id).get();
-        if (snap.exists && snap.data() != null) {
-          final store = StoreModel.fromJson(snap.data()!, snap.id);
-          if (!store.isDeleted) {
-            UserRole? role;
+      // Fetch all stores and member profiles concurrently in parallel
+      final storeFutures = storeIds.map((id) async {
+        try {
+          final snap = await _firestore.collection('stores').doc(id).get();
+          if (!snap.exists || snap.data() == null) return null;
 
-            // 1. Check direct doc by uid in members subcollection
-            final memberDoc = await _firestore
+          final store = StoreModel.fromJson(snap.data()!, snap.id);
+          if (store.isDeleted) return null;
+
+          final isOwner = store.ownerId.trim() == uid.trim();
+          MemberModel? member;
+
+          final memberDoc = await _firestore
+              .collection('stores')
+              .doc(id)
+              .collection('members')
+              .doc(uid)
+              .get();
+          if (memberDoc.exists && memberDoc.data() != null) {
+            member = MemberModel.fromFirestore(memberDoc);
+          } else {
+            final memberQuery = await _firestore
                 .collection('stores')
                 .doc(id)
                 .collection('members')
-                .doc(uid)
+                .where('userId', isEqualTo: uid)
+                .limit(1)
                 .get();
-            if (memberDoc.exists && memberDoc.data() != null) {
-              final member = MemberModel.fromFirestore(memberDoc);
-              role = member.role;
-            } else {
-              // 2. Query where userId == uid
-              final memberQuery = await _firestore
-                  .collection('stores')
-                  .doc(id)
-                  .collection('members')
-                  .where('userId', isEqualTo: uid)
-                  .limit(1)
-                  .get();
-              if (memberQuery.docs.isNotEmpty) {
-                final member = MemberModel.fromFirestore(memberQuery.docs.first);
-                role = member.role;
-              } else {
-                // 3. Fallback: inspect all docs in members collection in case field is id or uid
-                try {
-                  final allMembers = await _firestore
-                      .collection('stores')
-                      .doc(id)
-                      .collection('members')
-                      .get();
-                  for (final doc in allMembers.docs) {
-                    final data = doc.data();
-                    final mUid = data['userId']?.toString() ??
-                        data['id']?.toString() ??
-                        data['uid']?.toString() ??
-                        doc.id;
-                    if (mUid.trim() == uid.trim()) {
-                      role = MemberModel.fromFirestore(doc).role;
-                      break;
-                    }
-                  }
-                } catch (_) {}
-              }
+            if (memberQuery.docs.isNotEmpty) {
+              member = MemberModel.fromFirestore(memberQuery.docs.first);
             }
-
-            // 4. Fallback to owner check only if no member doc was found in members collection
-            if (role == null) {
-              if (store.ownerId.trim() == uid.trim()) {
-                role = UserRole.owner;
-              } else {
-                role = UserRole.employee;
-              }
-            }
-
-            results.add(UserStoreWithRole(store: store, role: role));
           }
+
+          if (!isOwner && (member == null || !member.isActive)) return null;
+
+          final role = isOwner
+              ? UserRole.owner
+              : member!.role == UserRole.owner
+                  ? UserRole.manager1
+                  : member.role;
+          return UserStoreWithRole(store: store, role: role);
+        } catch (_) {
+          return null;
         }
-      }
-      return results;
+      });
+
+      final fetched = await Future.wait(storeFutures);
+      return fetched.whereType<UserStoreWithRole>().toList();
     } catch (_) {
       return [];
     }
@@ -419,8 +361,7 @@ class AuthRepository {
         }
       } catch (_) {}
 
-      final inheritanceService =
-          StoreInheritanceService(firestore: _firestore);
+      final inheritanceService = StoreInheritanceService(firestore: _firestore);
       for (final storeId in storeIds) {
         try {
           await inheritanceService.executeInheritance(

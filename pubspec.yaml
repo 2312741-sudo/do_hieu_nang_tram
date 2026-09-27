@@ -1,7 +1,7 @@
 name: do_hieu_nang_tram
 description: Ứng dụng Đo Hiệu Năng Trạm - Module đo lường thời gian pha chế & xử lý đơn hàng trong hệ sinh thái Trạm
 publish_to: 'none'
-version: 1.0.4+11
+version: 1.0.7+15
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -16,6 +16,11 @@ dependencies:
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
   cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+
+  # Media & Image Processing
+  image_picker: ^1.1.2
+  image: ^4.3.0
 
   # State Management & Routing
   flutter_riverpod: ^2.6.1

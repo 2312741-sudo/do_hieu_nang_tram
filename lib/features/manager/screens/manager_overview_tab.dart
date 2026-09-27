@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/performance_calculator.dart';
 import '../../../core/utils/schedule_helper.dart';
 import '../../../core/widgets/custom_header.dart';
+import '../../../core/widgets/incident_image_viewer_dialog.dart';
 import '../../../core/widgets/personnel_selector.dart';
 import '../../../core/widgets/store_account_sheet.dart';
 import '../../../models/member_model.dart';
@@ -45,7 +47,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
   ScheduleModel? _cachedSchedule;
   bool _isLoadingSchedule = false;
   bool _scheduleLoaded = false;
-  String? _selectedShiftFilter; // null = ưu tiên ca hiện tại, 'all' = cả ngày, hoặc shiftId cụ thể
+  String?
+      _selectedShiftFilter; // null = ưu tiên ca hiện tại, 'all' = cả ngày, hoặc shiftId cụ thể
   List<ShiftDefinition> _availableShiftsToday = [];
   String? _activeShiftDisplay;
   int _scheduledStaffCount = 0;
@@ -58,7 +61,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
       final managers = ref.read(storeManagersProvider);
       final currentUid = ref.read(currentUserIdProvider);
       if (managers.isNotEmpty) {
-        final currentMgr = managers.where((m) => m.userId == currentUid).firstOrNull;
+        final currentMgr =
+            managers.where((m) => m.userId == currentUid).firstOrNull;
         setState(() {
           _selectedManager = currentMgr ?? managers.first;
         });
@@ -79,7 +83,9 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
 
     try {
       final weekStart = ScheduleHelper.getWeekStartString();
-      final schedule = await ref.read(performanceRepositoryProvider).getWeekSchedule(store.id, weekStart);
+      final schedule = await ref
+          .read(performanceRepositoryProvider)
+          .getWeekSchedule(store.id, weekStart);
 
       if (schedule != null) {
         _cachedSchedule = schedule;
@@ -126,19 +132,23 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
             .limit(1)
             .get();
         if (reportSnap.docs.isNotEmpty) {
-          final rep = PerformanceReportModel.fromFirestore(reportSnap.docs.first);
-          _applyFallbackStaff(rep.employeeNames, rep.employeeIds, rep.managerOnDutyName, rep.managerOnDutyId);
+          final rep =
+              PerformanceReportModel.fromFirestore(reportSnap.docs.first);
+          _applyFallbackStaff(rep.employeeNames, rep.employeeIds,
+              rep.managerOnDutyName, rep.managerOnDutyId);
         }
       } else {
         final session = PerformanceSessionModel.fromFirestore(snap.docs.first);
-        _applyFallbackStaff(session.employeeNames, session.employeeIds, session.managerOnDutyName, session.managerOnDutyId);
+        _applyFallbackStaff(session.employeeNames, session.employeeIds,
+            session.managerOnDutyName, session.managerOnDutyId);
       }
     } catch (e) {
       debugPrint('Fallback last session load error: $e');
     }
   }
 
-  void _applyFallbackStaff(List<String> empNames, List<String> empIds, String mgrName, String mgrId) {
+  void _applyFallbackStaff(List<String> empNames, List<String> empIds,
+      String mgrName, String mgrId) {
     if (!mounted || _hasUserManuallyEditedPersonnel) return;
     final allStaff = ref.read(storeShiftStaffProvider);
     final managers = ref.read(storeManagersProvider);
@@ -150,7 +160,11 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
     for (int i = 0; i < empNames.length; i++) {
       final raw = empNames[i];
       final id = empIds.length > i ? empIds[i] : '';
-      final member = allStaff.where((s) => s.userId == id || s.name == raw.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim()).firstOrNull;
+      final member = allStaff
+          .where((s) =>
+              s.userId == id ||
+              s.name == raw.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim())
+          .firstOrNull;
       if (member != null) {
         if (raw.contains('(Nước)') || raw.contains('(dr)')) {
           drinkStaff.add(member);
@@ -173,11 +187,14 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
     }
 
     setState(() {
-      if (drinkStaff.isNotEmpty || cakeStaff.isNotEmpty || serviceStaff.isNotEmpty) {
+      if (drinkStaff.isNotEmpty ||
+          cakeStaff.isNotEmpty ||
+          serviceStaff.isNotEmpty) {
         _selectedDrinkStaff = drinkStaff;
         _selectedCakeStaff = cakeStaff;
         _selectedServiceStaff = serviceStaff;
-        _scheduledStaffCount = drinkStaff.length + cakeStaff.length + serviceStaff.length;
+        _scheduledStaffCount =
+            drinkStaff.length + cakeStaff.length + serviceStaff.length;
       }
       if (matchedMgr != null) {
         _selectedManager = matchedMgr;
@@ -212,23 +229,27 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
       _scheduleLoaded = true;
 
       // Quản lý đứng ca: nếu người đo chưa chọn, ưu tiên đề xuất Quản lý có lịch ca hôm nay
-      if (_selectedManager == null && ref.read(storeManagersProvider).isNotEmpty) {
+      if (_selectedManager == null &&
+          ref.read(storeManagersProvider).isNotEmpty) {
         final managers = ref.read(storeManagersProvider);
-        final scheduledMgr = managers.where((m) =>
-          resolution.drinkStaff.any((s) => s.userId == m.userId) ||
-          resolution.cakeStaff.any((s) => s.userId == m.userId) ||
-          resolution.serviceStaff.any((s) => s.userId == m.userId)
-        ).firstOrNull;
+        final scheduledMgr = managers
+            .where((m) =>
+                resolution.drinkStaff.any((s) => s.userId == m.userId) ||
+                resolution.cakeStaff.any((s) => s.userId == m.userId) ||
+                resolution.serviceStaff.any((s) => s.userId == m.userId))
+            .firstOrNull;
         _selectedManager = scheduledMgr ?? managers.first;
       }
     });
   }
 
-  List<MemberModel> _getStaffForDept(PerformanceSessionModel session, String deptTag) {
+  List<MemberModel> _getStaffForDept(
+      PerformanceSessionModel session, String deptTag) {
     final list = <MemberModel>[];
     for (int i = 0; i < session.employeeNames.length; i++) {
       final fullName = session.employeeNames[i];
-      final uid = session.employeeIds.length > i ? session.employeeIds[i] : 'staff_$i';
+      final uid =
+          session.employeeIds.length > i ? session.employeeIds[i] : 'staff_$i';
       if (fullName.contains('($deptTag)')) {
         final cleanName = fullName.replaceAll('($deptTag)', '').trim();
         list.add(MemberModel(
@@ -250,16 +271,19 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
   Future<void> _startSession() async {
     final store = ref.read(currentStoreProvider).valueOrNull;
     final user = ref.read(currentUserProvider).valueOrNull;
+    final userId = ref.read(currentUserIdProvider);
     final managers = ref.read(storeManagersProvider);
 
-    if (store == null || user == null) {
+    if (store == null || user == null || userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn cửa hàng trước khi bắt đầu.')),
+        const SnackBar(
+            content: Text('Vui lòng chọn cửa hàng trước khi bắt đầu.')),
       );
       return;
     }
 
-    final managerOnDuty = _selectedManager ?? (managers.isNotEmpty ? managers.first : null);
+    final managerOnDuty =
+        _selectedManager ?? (managers.isNotEmpty ? managers.first : null);
     if (managerOnDuty == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -296,7 +320,7 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
         id: sessionId,
         storeId: store.id,
         storeName: store.name,
-        managerId: user.id,
+        managerId: userId,
         managerName: user.name,
         managerOnDutyId: managerOnDuty.userId,
         managerOnDutyName: managerOnDuty.name,
@@ -306,23 +330,6 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
         status: SessionStatus.active,
         createdAt: now,
       );
-
-      final existingActive = await FirebaseFirestore.instance
-          .collection('performance_sessions')
-          .where('storeId', isEqualTo: store.id)
-          .where('status', isEqualTo: 'active')
-          .get();
-      if (existingActive.docs.isNotEmpty) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cửa hàng này đã có ca đo đang mở. Bạn đã được kết nối vào ca đo chung.'),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        return;
-      }
 
       final repo = ref.read(performanceRepositoryProvider);
       await repo.createSession(newSession);
@@ -357,11 +364,12 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
     final managers = ref.watch(storeManagersProvider);
     final shiftStaff = ref.watch(storeShiftStaffProvider);
 
-    final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
-    final activeTimers = allMeasurements.where((m) => m.status.isActive).toList();
+    final remoteAll = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
+    final activeTimers = ref.watch(activeSessionTimersProvider);
 
     // Tự động lắng nghe cập nhật Lịch làm việc tuần
-    ref.listen<AsyncValue<ScheduleModel?>>(currentWeekScheduleProvider, (prev, next) {
+    ref.listen<AsyncValue<ScheduleModel?>>(currentWeekScheduleProvider,
+        (prev, next) {
       final schedule = next.valueOrNull;
       if (schedule != null && !_hasUserManuallyEditedPersonnel) {
         _cachedSchedule = schedule;
@@ -394,14 +402,16 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
 
     // Auto-update managers if not yet set
     if (_selectedManager == null && managers.isNotEmpty) {
-      _selectedManager = managers.where((m) => m.userId == user?.id).firstOrNull ?? managers.first;
+      _selectedManager =
+          managers.where((m) => m.userId == user?.id).firstOrNull ??
+              managers.first;
     }
 
     final firstName = user?.name.split(' ').last ?? 'Quản lý';
     final timeFmt = DateFormat('HH:mm');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: CustomScrollView(
         slivers: [
           // Header with Store Selector and Account Action
@@ -431,22 +441,36 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const StaffLeaderboardScreen(),
+                            builder: (_) => InheritedTheme.captureAll(
+                                context, const StaffLeaderboardScreen()),
                           ),
                         );
                       },
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF047857)],
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.primary ==
+                                      AppColors.ownerAccent
+                                  ? AppColors.ownerAccentDark
+                                  : AppColors.managerAccentDark
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x1810B981), blurRadius: 8, offset: Offset(0, 3)),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.12),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3)),
                           ],
                         ),
                         child: Row(
@@ -457,7 +481,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD700), size: 20),
+                              child: const Icon(Icons.emoji_events_rounded,
+                                  color: Color(0xFFFFD700), size: 20),
                             ),
                             const SizedBox(width: 12),
                             const Expanded(
@@ -484,7 +509,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                color: Colors.white, size: 14),
                           ],
                         ),
                       ),
@@ -497,12 +523,16 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 3)),
+                          BoxShadow(
+                              color: Color(0x0A000000),
+                              blurRadius: 10,
+                              offset: Offset(0, 3)),
                         ],
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.timer_outlined, size: 48, color: Colors.grey.shade400),
+                          Icon(Icons.timer_outlined,
+                              size: 48, color: Colors.grey.shade400),
                           const SizedBox(height: 10),
                           const Text(
                             AppStrings.noActiveSession,
@@ -541,7 +571,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                       selectedCakeStaff: _selectedCakeStaff,
                       selectedServiceStaff: _selectedServiceStaff,
                       isReadOnly: false,
-                      onManagerChanged: (m) => setState(() => _selectedManager = m),
+                      onManagerChanged: (m) =>
+                          setState(() => _selectedManager = m),
                       onDrinkStaffChanged: (list) => setState(() {
                         _hasUserManuallyEditedPersonnel = true;
                         _selectedDrinkStaff = list;
@@ -561,17 +592,19 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                     ElevatedButton(
                       onPressed: _isStartingSession ? null : _startSession,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 54),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         elevation: 3,
                       ),
                       child: _isStartingSession
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5),
                             )
                           : const Text(
                               AppStrings.startSession,
@@ -617,7 +650,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.flash_on_rounded, color: Colors.white, size: 20),
+                                child: const Icon(Icons.flash_on_rounded,
+                                    color: Colors.white, size: 20),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
@@ -647,7 +681,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(8),
@@ -655,7 +690,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.circle, color: Color(0xFF4ADE80), size: 8),
+                                    Icon(Icons.circle,
+                                        color: Color(0xFF4ADE80), size: 8),
                                     SizedBox(width: 4),
                                     Text(
                                       'Live',
@@ -676,11 +712,13 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => EndSessionPreviewScreen(session: activeSession),
+                                  builder: (_) => EndSessionPreviewScreen(
+                                      session: activeSession),
                                 ),
                               );
                             },
-                            icon: const Icon(Icons.stop_circle_outlined, size: 20, color: AppColors.danger),
+                            icon: const Icon(Icons.stop_circle_outlined,
+                                size: 20, color: AppColors.danger),
                             label: const Text(
                               'KẾT THÚC PHIÊN ĐO & GỬI BÁO CÁO',
                               style: TextStyle(
@@ -695,7 +733,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               foregroundColor: AppColors.danger,
                               elevation: 0,
                               minimumSize: const Size(double.infinity, 44),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ],
@@ -742,11 +781,15 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                           averageSeconds: activeSession.drinkAverageSeconds,
                           unit: 'ly',
                           color: const Color(0xFFE8192F),
-                          onAddTimer: () => AddTimerBottomSheet.show(context, PerformanceCategory.drink),
+                          onAddTimer: () => AddTimerBottomSheet.show(
+                              context, PerformanceCategory.drink),
                           onViewDetail: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const CategoryMeasureScreen(category: PerformanceCategory.drink),
+                              builder: (_) => InheritedTheme.captureAll(
+                                  context,
+                                  const CategoryMeasureScreen(
+                                      category: PerformanceCategory.drink)),
                             ),
                           ),
                         ),
@@ -762,11 +805,15 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                           averageSeconds: activeSession.cakeAverageSeconds,
                           unit: 'cái',
                           color: const Color(0xFFEB9B28),
-                          onAddTimer: () => AddTimerBottomSheet.show(context, PerformanceCategory.cake),
+                          onAddTimer: () => AddTimerBottomSheet.show(
+                              context, PerformanceCategory.cake),
                           onViewDetail: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const CategoryMeasureScreen(category: PerformanceCategory.cake),
+                              builder: (_) => InheritedTheme.captureAll(
+                                  context,
+                                  const CategoryMeasureScreen(
+                                      category: PerformanceCategory.cake)),
                             ),
                           ),
                         ),
@@ -782,11 +829,15 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                           averageSeconds: activeSession.orderAverageSeconds,
                           unit: 'đơn',
                           color: const Color(0xFF1C4E6B),
-                          onAddTimer: () => AddTimerBottomSheet.show(context, PerformanceCategory.order),
+                          onAddTimer: () => AddTimerBottomSheet.show(
+                              context, PerformanceCategory.order),
                           onViewDetail: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const CategoryMeasureScreen(category: PerformanceCategory.order),
+                              builder: (_) => InheritedTheme.captureAll(
+                                  context,
+                                  const CategoryMeasureScreen(
+                                      category: PerformanceCategory.order)),
                             ),
                           ),
                         ),
@@ -805,7 +856,9 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               height: 8,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: activeTimers.isNotEmpty ? AppColors.success : Colors.grey.shade400,
+                                color: activeTimers.isNotEmpty
+                                    ? AppColors.success
+                                    : Colors.grey.shade400,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -823,7 +876,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         if (activeTimers.isNotEmpty)
                           TextButton(
                             onPressed: widget.onNavigateToActiveTimers,
-                            child: const Text('Xem tất cả ➔', style: TextStyle(fontSize: 13)),
+                            child: const Text('Xem tất cả ➔',
+                                style: TextStyle(fontSize: 13)),
                           ),
                       ],
                     ),
@@ -832,7 +886,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                     if (activeTimers.isEmpty) ...[
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 24, horizontal: 16),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -840,7 +895,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         ),
                         child: Column(
                           children: [
-                            Icon(Icons.hourglass_empty_rounded, size: 36, color: Colors.grey.shade400),
+                            Icon(Icons.hourglass_empty_rounded,
+                                size: 36, color: Colors.grey.shade400),
                             const SizedBox(height: 8),
                             const Text(
                               'Chưa có lần đo nào đang chạy',
@@ -872,7 +928,9 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final timer = activeTimers[index];
-                          final itemIdx = PerformanceCalculator.getCategorySequenceNumber(timer, allMeasurements);
+                          final itemIdx =
+                              PerformanceCalculator.getCategorySequenceNumber(
+                                  timer, remoteAll);
                           return TimerCard(
                             timer: timer,
                             itemNumber: itemIdx,
@@ -897,7 +955,10 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               : Colors.grey.shade200,
                         ),
                         boxShadow: const [
-                          BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+                          BoxShadow(
+                              color: Color(0x06000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2)),
                         ],
                       ),
                       child: Column(
@@ -914,7 +975,10 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                       color: const Color(0xFFFEF2F2),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    child: const Icon(Icons.report_problem_rounded, color: Color(0xFFDC2626), size: 18),
+                                    child: const Icon(
+                                        Icons.report_problem_rounded,
+                                        color: Color(0xFFDC2626),
+                                        size: 18),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -930,7 +994,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 ],
                               ),
                               ElevatedButton.icon(
-                                onPressed: () => AddIncidentBottomSheet.show(context, activeSession),
+                                onPressed: () => AddIncidentBottomSheet.show(
+                                    context, activeSession),
                                 icon: const Icon(Icons.add_rounded, size: 16),
                                 label: const Text(
                                   'Báo lỗi',
@@ -943,36 +1008,43 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFDC2626),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10)),
                                   elevation: 1,
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
-
                           if (activeSession.incidents.isEmpty)
                             InkWell(
-                              onTap: () => AddIncidentBottomSheet.show(context, activeSession),
+                              onTap: () => AddIncidentBottomSheet.show(
+                                  context, activeSession),
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14, horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFF1F2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFFECDD3)),
+                                  border: Border.all(
+                                      color: const Color(0xFFFECDD3)),
                                 ),
                                 child: const Row(
                                   children: [
-                                    Icon(Icons.add_alert_rounded, color: Color(0xFFE11D48), size: 20),
+                                    Icon(Icons.add_alert_rounded,
+                                        color: Color(0xFFE11D48), size: 20),
                                     SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             'Chưa ghi nhận lỗi phát sinh',
@@ -994,16 +1066,21 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                         ],
                                       ),
                                     ),
-                                    Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFE11D48), size: 13),
+                                    Icon(Icons.arrow_forward_ios_rounded,
+                                        color: Color(0xFFE11D48), size: 13),
                                   ],
                                 ),
                               ),
                             )
                           else
-                            ...activeSession.incidents.asMap().entries.map((entry) {
+                            ...activeSession.incidents
+                                .asMap()
+                                .entries
+                                .map((entry) {
                               final idx = entry.key + 1;
                               final incident = entry.value;
-                              final timeStr = timeFmt.format(incident.timestamp);
+                              final timeStr =
+                                  timeFmt.format(incident.timestamp);
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
@@ -1011,7 +1088,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                 decoration: BoxDecoration(
                                   color: AppColors.surface,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade200),
+                                  border:
+                                      Border.all(color: Colors.grey.shade200),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1028,15 +1106,21 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
                                                 decoration: BoxDecoration(
-                                                  color: const Color(0xFFDC2626).withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(6),
+                                                  color: const Color(0xFFDC2626)
+                                                      .withOpacity(0.1),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
                                                 ),
                                                 child: Text(
                                                   incident.category,
@@ -1069,21 +1153,141 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                               fontFamily: 'BeVietnamPro',
                                             ),
                                           ),
-                                          if (incident.staffName != null && incident.staffName!.isNotEmpty) ...[
+                                          if (incident.staffName != null &&
+                                              incident
+                                                  .staffName!.isNotEmpty) ...[
                                             const SizedBox(height: 4),
                                             Row(
                                               children: [
-                                                const Icon(Icons.person_outline_rounded, size: 13, color: AppColors.textSecondary),
+                                                const Icon(
+                                                    Icons
+                                                        .person_outline_rounded,
+                                                    size: 13,
+                                                    color: AppColors
+                                                        .textSecondary),
                                                 const SizedBox(width: 4),
                                                 Text(
                                                   'Liên quan: ${incident.staffName}',
                                                   style: const TextStyle(
                                                     fontSize: 11.5,
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontFamily: 'BeVietnamPro',
                                                   ),
                                                 ),
                                               ],
+                                            ),
+                                          ],
+                                          if (incident.imageUrl != null &&
+                                              incident
+                                                  .imageUrl!.isNotEmpty) ...[
+                                            const SizedBox(height: 8),
+                                            GestureDetector(
+                                              onTap: () =>
+                                                  IncidentImageViewerDialog
+                                                      .show(
+                                                context,
+                                                imageUrl: incident.imageUrl,
+                                                title:
+                                                    'Ảnh minh chứng • ${incident.category}',
+                                              ),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                      color:
+                                                          Colors.grey.shade300),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6),
+                                                      child: CachedNetworkImage(
+                                                        imageUrl:
+                                                            incident.imageUrl!,
+                                                        width: 44,
+                                                        height: 44,
+                                                        fit: BoxFit.cover,
+                                                        placeholder:
+                                                            (context, url) =>
+                                                                Container(
+                                                          width: 44,
+                                                          height: 44,
+                                                          color: Colors
+                                                              .grey.shade100,
+                                                          child: const Center(
+                                                              child: SizedBox(
+                                                                  width: 14,
+                                                                  height: 14,
+                                                                  child: CircularProgressIndicator(
+                                                                      strokeWidth:
+                                                                          2))),
+                                                        ),
+                                                        errorWidget: (context,
+                                                                url, error) =>
+                                                            const Icon(
+                                                                Icons
+                                                                    .broken_image,
+                                                                size: 20,
+                                                                color: Colors
+                                                                    .grey),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    const Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            Icon(
+                                                                Icons
+                                                                    .image_rounded,
+                                                                size: 13,
+                                                                color: Color(
+                                                                    0xFFDC2626)),
+                                                            SizedBox(width: 4),
+                                                            Text(
+                                                              'Xem ảnh minh chứng',
+                                                              style: TextStyle(
+                                                                fontSize: 11.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                    0xFFDC2626),
+                                                                fontFamily:
+                                                                    'BeVietnamPro',
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        Text(
+                                                          'Chạm để phóng to',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: AppColors
+                                                                .textSecondary,
+                                                            fontFamily:
+                                                                'BeVietnamPro',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ],
@@ -1091,31 +1295,47 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                     ),
                                     const SizedBox(width: 6),
                                     IconButton(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.grey),
+                                      icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 18,
+                                          color: Colors.grey),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
                                       onPressed: () async {
-                                        final confirmed = await showDialog<bool>(
+                                        final confirmed =
+                                            await showDialog<bool>(
                                           context: context,
                                           builder: (ctx) => AlertDialog(
-                                            title: const Text('Xóa lỗi phát sinh?'),
-                                            content: Text('Bạn có chắc muốn xóa lỗi "${incident.description}"?'),
+                                            title: const Text(
+                                                'Xóa lỗi phát sinh?'),
+                                            content: Text(
+                                                'Bạn có chắc muốn xóa lỗi "${incident.description}"?'),
                                             actions: [
                                               TextButton(
-                                                onPressed: () => Navigator.pop(ctx, false),
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, false),
                                                 child: const Text('HỦY'),
                                               ),
                                               ElevatedButton(
-                                                onPressed: () => Navigator.pop(ctx, true),
-                                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
-                                                child: const Text('XÓA', style: TextStyle(color: Colors.white)),
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx, true),
+                                                style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        AppColors.danger),
+                                                child: const Text('XÓA',
+                                                    style: TextStyle(
+                                                        color: Colors.white)),
                                               ),
                                             ],
                                           ),
                                         );
 
                                         if (confirmed == true) {
-                                          ref.read(performanceRepositoryProvider).removeSessionIncident(activeSession.id, incident);
+                                          ref
+                                              .read(
+                                                  performanceRepositoryProvider)
+                                              .removeSessionIncident(
+                                                  activeSession.id, incident);
                                         }
                                       },
                                     ),
@@ -1155,10 +1375,14 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         standardHoursPerMonth: 208,
                         joinedAt: DateTime.now(),
                       ),
-                      selectedDrinkStaff: _getStaffForDept(activeSession, 'Nước'),
-                      selectedCakeStaff: _getStaffForDept(activeSession, 'Bánh'),
-                      selectedServiceStaff: _getStaffForDept(activeSession, 'Phục vụ'),
-                      selectedStaff: activeSession.employeeIds.asMap().entries.map((e) {
+                      selectedDrinkStaff:
+                          _getStaffForDept(activeSession, 'Nước'),
+                      selectedCakeStaff:
+                          _getStaffForDept(activeSession, 'Bánh'),
+                      selectedServiceStaff:
+                          _getStaffForDept(activeSession, 'Phục vụ'),
+                      selectedStaff:
+                          activeSession.employeeIds.asMap().entries.map((e) {
                         return MemberModel(
                           userId: e.value,
                           name: activeSession.employeeNames.length > e.key
@@ -1187,7 +1411,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
   }
 
   Widget _buildScheduleBanner(BuildContext context) {
-    final activeShift = ScheduleHelper.findActiveShift(DateTime.now(), _availableShiftsToday);
+    final activeShift =
+        ScheduleHelper.findActiveShift(DateTime.now(), _availableShiftsToday);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1218,17 +1443,23 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                 decoration: BoxDecoration(
                   color: _scheduleLoaded
                       ? const Color(0xFFECFDF5)
-                      : (_isLoadingSchedule ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9)),
+                      : (_isLoadingSchedule
+                          ? const Color(0xFFEFF6FF)
+                          : const Color(0xFFF1F5F9)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   _scheduleLoaded
                       ? Icons.bolt_rounded
-                      : (_isLoadingSchedule ? Icons.hourglass_top_rounded : Icons.calendar_today_rounded),
+                      : (_isLoadingSchedule
+                          ? Icons.hourglass_top_rounded
+                          : Icons.calendar_today_rounded),
                   size: 18,
                   color: _scheduleLoaded
                       ? const Color(0xFF059669)
-                      : (_isLoadingSchedule ? const Color(0xFF2563EB) : Colors.grey.shade600),
+                      : (_isLoadingSchedule
+                          ? const Color(0xFF2563EB)
+                          : Colors.grey.shade600),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1251,7 +1482,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         const SizedBox(width: 6),
                         if (_scheduleLoaded)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: const Color(0xFFECFDF5),
                               borderRadius: BorderRadius.circular(6),
@@ -1259,7 +1491,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.circle, size: 6, color: Color(0xFF10B981)),
+                                Icon(Icons.circle,
+                                    size: 6, color: Color(0xFF10B981)),
                                 SizedBox(width: 3),
                                 Text(
                                   'Đã tải tự động',
@@ -1286,9 +1519,12 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               : 'Chưa có lịch hôm nay. Bạn có thể chọn thủ công bên dưới.'),
                       style: TextStyle(
                         fontSize: 11.5,
-                        fontWeight: _scheduleLoaded ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight:
+                            _scheduleLoaded ? FontWeight.w600 : FontWeight.w500,
                         fontFamily: 'BeVietnamPro',
-                        color: _scheduleLoaded ? const Color(0xFF047857) : AppColors.textSecondary,
+                        color: _scheduleLoaded
+                            ? const Color(0xFF047857)
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1317,7 +1553,9 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                     ? 'Đã tải thành công $_scheduledStaffCount nhân sự hôm nay!'
                                     : 'Không tìm thấy lịch làm hôm nay trên hệ thống.',
                               ),
-                              backgroundColor: _scheduleLoaded ? AppColors.success : Colors.grey.shade700,
+                              backgroundColor: _scheduleLoaded
+                                  ? AppColors.success
+                                  : Colors.grey.shade700,
                               duration: const Duration(seconds: 2),
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -1325,11 +1563,13 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                         },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300, width: 0.8),
+                      border:
+                          Border.all(color: Colors.grey.shade300, width: 0.8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1343,7 +1583,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                   color: Color(0xFF2563EB),
                                 ),
                               )
-                            : const Icon(Icons.sync_rounded, size: 14, color: Color(0xFF2563EB)),
+                            : const Icon(Icons.sync_rounded,
+                                size: 14, color: Color(0xFF2563EB)),
                         const SizedBox(width: 4),
                         const Text(
                           'Đồng bộ',
@@ -1384,7 +1625,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (isRunning) ...[
-                                  const Icon(Icons.play_arrow_rounded, size: 13, color: Color(0xFF10B981)),
+                                  const Icon(Icons.play_arrow_rounded,
+                                      size: 13, color: Color(0xFF10B981)),
                                   const SizedBox(width: 3),
                                 ],
                                 Text(
@@ -1403,11 +1645,14 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                             selected: isSelected,
                             onSelected: (selected) {
                               setState(() {
-                                _selectedShiftFilter = selected ? shift.id : null;
+                                _selectedShiftFilter =
+                                    selected ? shift.id : null;
                               });
-                              _applyScheduleToDepartments(shiftId: _selectedShiftFilter);
+                              _applyScheduleToDepartments(
+                                  shiftId: _selectedShiftFilter);
                             },
-                            selectedColor: const Color(0xFF2563EB).withOpacity(0.12),
+                            selectedColor:
+                                const Color(0xFF2563EB).withOpacity(0.12),
                             checkmarkColor: const Color(0xFF2563EB),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -1417,7 +1662,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                                     : Colors.grey.shade300,
                               ),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
                           ),
                         );
                       },
@@ -1440,7 +1686,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                       setState(() {
                         _selectedShiftFilter = selected ? 'all' : null;
                       });
-                      _applyScheduleToDepartments(shiftId: _selectedShiftFilter);
+                      _applyScheduleToDepartments(
+                          shiftId: _selectedShiftFilter);
                     },
                     selectedColor: const Color(0xFF10B981).withOpacity(0.12),
                     checkmarkColor: const Color(0xFF059669),
@@ -1452,7 +1699,8 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
                             : Colors.grey.shade300,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   ),
                 ],
               ),
@@ -1463,7 +1711,6 @@ class _ManagerOverviewTabState extends ConsumerState<ManagerOverviewTab> {
     );
   }
 }
-
 
 class _CategoryDirectCard extends StatelessWidget {
   final PerformanceCategory category;
@@ -1500,7 +1747,8 @@ class _CategoryDirectCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
         ],
         border: Border.all(color: Colors.grey.shade100),
       ),
@@ -1536,9 +1784,12 @@ class _CategoryDirectCard extends StatelessWidget {
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isMax ? AppColors.danger.withOpacity(0.1) : Colors.grey.shade100,
+                              color: isMax
+                                  ? AppColors.danger.withOpacity(0.1)
+                                  : Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -1547,7 +1798,9 @@ class _CategoryDirectCard extends StatelessWidget {
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'BeVietnamPro',
-                                color: isMax ? AppColors.danger : AppColors.textSecondary,
+                                color: isMax
+                                    ? AppColors.danger
+                                    : AppColors.textSecondary,
                               ),
                             ),
                           ),
@@ -1577,7 +1830,8 @@ class _CategoryDirectCard extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: isMax ? null : onAddTimer,
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+                    icon:
+                        const Icon(Icons.add_circle_outline_rounded, size: 18),
                     label: Text(
                       isMax ? 'Đã đủ 20 lần' : '+ BẤM GIỜ $title',
                       style: const TextStyle(
@@ -1592,7 +1846,8 @@ class _CategoryDirectCard extends StatelessWidget {
                       foregroundColor: Colors.white,
                       elevation: 0,
                       minimumSize: const Size(double.infinity, 42),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
                 ),

@@ -1,12 +1,59 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:do_hieu_nang_tram/features/session/repositories/performance_repository.dart';
 import 'package:do_hieu_nang_tram/models/member_model.dart';
 import 'package:do_hieu_nang_tram/models/measurement_model.dart';
 import 'package:do_hieu_nang_tram/models/performance_session_model.dart';
 import 'package:do_hieu_nang_tram/models/performance_report_model.dart';
+import 'package:do_hieu_nang_tram/models/user_model.dart';
 
 void main() {
+  group('Firebase compatibility', () {
+    test('UserModel parses Firestore Timestamp and legacy ISO dates', () {
+      final createdAt = DateTime.utc(2026, 9, 16, 1, 30);
+      final birthday = DateTime.utc(1990, 5, 20);
+
+      final timestampUser = UserModel.fromJson({
+        'id': 'timestamp-user',
+        'name': 'Timestamp User',
+        'email': 'timestamp@example.com',
+        'createdAt': Timestamp.fromDate(createdAt),
+        'birthday': Timestamp.fromDate(birthday),
+      });
+      final legacyUser = UserModel.fromJson({
+        'id': 'legacy-user',
+        'name': 'Legacy User',
+        'email': 'legacy@example.com',
+        'createdAt': createdAt.toIso8601String(),
+        'birthday': birthday.toIso8601String(),
+      });
+
+      expect(timestampUser.createdAt.isAtSameMomentAs(createdAt), isTrue);
+      expect(timestampUser.birthday!.isAtSameMomentAs(birthday), isTrue);
+      expect(legacyUser.createdAt.isAtSameMomentAs(createdAt), isTrue);
+      expect(legacyUser.birthday!.isAtSameMomentAs(birthday), isTrue);
+    });
+
+    test('store report queries keep every unique id across Firestore chunks',
+        () {
+      final ids = [
+        for (var index = 0; index < 65; index++) ' store_$index ',
+        'store_0',
+        '',
+      ];
+
+      final chunks = chunkPerformanceStoreIds(ids);
+
+      expect(chunks.map((chunk) => chunk.length), [30, 30, 5]);
+      expect(chunks.expand((chunk) => chunk).toSet().length, 65);
+      expect(chunks.first.first, 'store_0');
+      expect(chunks.last.last, 'store_64');
+    });
+  });
+
   group('MeasurementModel Tests', () {
-    test('MeasurementModel accurately computes elapsedSeconds from timestamp', () {
+    test('MeasurementModel accurately computes elapsedSeconds from timestamp',
+        () {
       final now = DateTime.now();
       final started = now.subtract(const Duration(seconds: 135));
 
@@ -50,6 +97,43 @@ void main() {
   });
 
   group('PerformanceSessionModel & Personnel Tests', () {
+    test('Session ownership requires the same authenticated user and store',
+        () {
+      final session = PerformanceSessionModel(
+        id: 'session_a',
+        storeId: 'store_x',
+        storeName: 'Store X',
+        managerId: 'user_a',
+        managerName: 'User A',
+        managerOnDutyId: 'manager_on_duty',
+        managerOnDutyName: 'Manager On Duty',
+        startedAt: DateTime(2026),
+        createdAt: DateTime(2026),
+      );
+
+      expect(session.createdByUserId, 'user_a');
+      expect(session.canResume(storeId: 'store_x', userId: 'user_a'), isTrue);
+      expect(session.canResume(storeId: 'store_x', userId: 'user_b'), isFalse);
+      expect(session.canResume(storeId: 'store_x', userId: 'manager_on_duty'),
+          isFalse);
+      expect(session.canResume(storeId: 'store_y', userId: 'user_a'), isFalse);
+      expect(
+        session.copyWith(status: SessionStatus.completed).canResume(
+              storeId: 'store_x',
+              userId: 'user_a',
+            ),
+        isFalse,
+      );
+
+      final concurrentSession =
+          session.copyWith(id: 'session_b', managerId: 'user_b');
+      expect(concurrentSession.isActive, isTrue);
+      expect(concurrentSession.canResume(storeId: 'store_x', userId: 'user_b'),
+          isTrue);
+      expect(concurrentSession.canResume(storeId: 'store_x', userId: 'user_a'),
+          isFalse);
+    });
+
     test('Session preserves personnel snapshot correctly', () {
       final session = PerformanceSessionModel(
         id: 'session_1',
@@ -140,7 +224,9 @@ void main() {
   });
 
   group('UserRole parsing & label Tests', () {
-    test('UserRoleExtension.fromString parses all variations and cases accurately', () {
+    test(
+        'UserRoleExtension.fromString parses all variations and cases accurately',
+        () {
       expect(UserRoleExtension.fromString('owner'), UserRole.owner);
       expect(UserRoleExtension.fromString('OWNER'), UserRole.owner);
       expect(UserRoleExtension.fromString('ROLE_OWNER'), UserRole.owner);
@@ -163,7 +249,8 @@ void main() {
 
       expect(UserRoleExtension.fromString('manager'), UserRole.legacyManager);
       expect(UserRoleExtension.fromString('MANAGER'), UserRole.legacyManager);
-      expect(UserRoleExtension.fromString('ROLE_MANAGER'), UserRole.legacyManager);
+      expect(
+          UserRoleExtension.fromString('ROLE_MANAGER'), UserRole.legacyManager);
       expect(UserRoleExtension.fromString('ql'), UserRole.legacyManager);
       expect(UserRoleExtension.fromString('qly'), UserRole.legacyManager);
       expect(UserRoleExtension.fromString('quan_ly'), UserRole.legacyManager);
@@ -193,7 +280,8 @@ void main() {
   });
 
   group('PerformanceIncidentModel Tests', () {
-    test('Incident model serialization and deserialization works correctly', () {
+    test('Incident model serialization and deserialization works correctly',
+        () {
       final now = DateTime.now();
       final incident = PerformanceIncidentModel(
         id: 'inc_1',
@@ -217,6 +305,13 @@ void main() {
       expect(deserialized.category, 'Thiết bị / Máy móc');
       expect(deserialized.staffName, 'Lê Văn C (Nước)');
       expect(deserialized.reportedBy, 'Nguyễn Văn A');
+      expect(deserialized.imageUrl, isNull);
+
+      final withImage = incident.copyWith(imageUrl: 'https://firebasestorage.googleapis.com/test.jpg');
+      final imageJson = withImage.toJson();
+      expect(imageJson['imageUrl'], 'https://firebasestorage.googleapis.com/test.jpg');
+      final fromImageJson = PerformanceIncidentModel.fromJson(imageJson);
+      expect(fromImageJson.imageUrl, 'https://firebasestorage.googleapis.com/test.jpg');
     });
 
     test('Session and Report preserve incidents list', () {
@@ -246,7 +341,8 @@ void main() {
       final sessionJson = session.toJson();
       final deserializedSession = PerformanceSessionModel.fromJson(sessionJson);
       expect(deserializedSession.incidents.length, 1);
-      expect(deserializedSession.incidents.first.description, 'Làm sai size ly nước');
+      expect(deserializedSession.incidents.first.description,
+          'Làm sai size ly nước');
 
       final report = PerformanceReportModel(
         id: 'r_inc',
@@ -269,7 +365,8 @@ void main() {
       expect(deserializedReport.incidents.first.category, 'Pha chế / Nước');
     });
 
-    test('Owner role is included in shift leader and measurement candidates', () {
+    test('Owner role is included in shift leader and measurement candidates',
+        () {
       final owner = MemberModel(
         userId: 'owner_1',
         name: 'Chủ Quán Duy',
@@ -307,23 +404,35 @@ void main() {
       final allMembers = [owner, manager, employee];
 
       // Shift leaders filter: (isManager || isOwner)
-      final shiftLeaders = allMembers.where((m) => (m.role.isManager || m.role.isOwner) && m.isActive).toList();
+      final shiftLeaders = allMembers
+          .where((m) => (m.role.isManager || m.role.isOwner) && m.isActive)
+          .toList();
       expect(shiftLeaders.length, 2);
-      expect(shiftLeaders.map((m) => m.userId), containsAll(['owner_1', 'mgr_1']));
+      expect(
+          shiftLeaders.map((m) => m.userId), containsAll(['owner_1', 'mgr_1']));
 
       // Shift staff filter: (isEmployee || isManager || isOwner)
-      final shiftStaff = allMembers.where((m) => (m.role.isEmployee || m.role.isManager || m.role.isOwner) && m.isActive).toList();
+      final shiftStaff = allMembers
+          .where((m) =>
+              (m.role.isEmployee || m.role.isManager || m.role.isOwner) &&
+              m.isActive)
+          .toList();
       expect(shiftStaff.length, 3);
-      expect(shiftStaff.map((m) => m.userId), containsAll(['owner_1', 'mgr_1', 'emp_1']));
+      expect(shiftStaff.map((m) => m.userId),
+          containsAll(['owner_1', 'mgr_1', 'emp_1']));
     });
 
-    test('Timeframe calculation for deletion matches week, month and range bounds', () {
+    test(
+        'Timeframe calculation for deletion matches week, month and range bounds',
+        () {
       final now = DateTime(2026, 9, 9, 15, 30); // Wednesday
       // Monday of this week: Sept 7th
       final monday = now.subtract(Duration(days: now.weekday - 1));
       final sunday = monday.add(const Duration(days: 6));
-      final weekStart = DateTime(monday.year, monday.month, monday.day, 0, 0, 0);
-      final weekEnd = DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
+      final weekStart =
+          DateTime(monday.year, monday.month, monday.day, 0, 0, 0);
+      final weekEnd =
+          DateTime(sunday.year, sunday.month, sunday.day, 23, 59, 59);
 
       expect(weekStart.day, 7);
       expect(weekEnd.day, 13);
@@ -349,4 +458,3 @@ void main() {
     });
   });
 }
-

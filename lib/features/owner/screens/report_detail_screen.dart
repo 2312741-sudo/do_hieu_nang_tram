@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/utils/excel_export_service.dart';
 import '../../../core/utils/performance_calculator.dart';
+import '../../../core/widgets/incident_image_viewer_dialog.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_report_model.dart';
 import '../../../models/performance_session_model.dart';
@@ -463,7 +465,10 @@ class _FormResponsesSection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•  ', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                  const Text('•  ',
+                      style: TextStyle(
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.bold)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,11 +482,17 @@ class _FormResponsesSection extends StatelessWidget {
                             color: AppColors.neutral,
                           ),
                         ),
+                        if (value != null && value != true && value != false) ...[
+                          const SizedBox(height: 4),
+                          _buildValueWidget(value, type),
+                        ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  _buildValueWidget(value, type),
+                  if (value == true || value == false || (type == 'rating' && value is num)) ...[
+                    const SizedBox(width: 12),
+                    Flexible(child: _buildValueWidget(value, type)),
+                  ],
                 ],
               ),
             );
@@ -695,6 +706,75 @@ class _IncidentsSection extends StatelessWidget {
                             ),
                           ),
                         ],
+                        if (incident.imageUrl != null && incident.imageUrl!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          GestureDetector(
+                            onTap: () => IncidentImageViewerDialog.show(
+                              context,
+                              imageUrl: incident.imageUrl,
+                              title: 'Ảnh minh chứng • ${incident.category}',
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: CachedNetworkImage(
+                                      imageUrl: incident.imageUrl!,
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) => Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: Colors.grey.shade100,
+                                        child: const Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))),
+                                      ),
+                                      errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.photo_camera_rounded, size: 13, color: Color(0xFFDC2626)),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Ảnh minh chứng sự cố',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFFDC2626),
+                                              fontFamily: 'BeVietnamPro',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'Chạm để xem ảnh phóng to',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          color: AppColors.textSecondary,
+                                          fontFamily: 'BeVietnamPro',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -718,19 +798,30 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+        Flexible(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+                fontSize: 13.5,
+                color: AppColors.textSecondary,
+                fontFamily: 'BeVietnamPro'),
+          ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14.5,
-            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
-            fontFamily: 'BeVietnamPro',
-            color: AppColors.neutral,
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 3,
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 14.5,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+              fontFamily: 'BeVietnamPro',
+              color: AppColors.neutral,
+            ),
           ),
         ),
       ],

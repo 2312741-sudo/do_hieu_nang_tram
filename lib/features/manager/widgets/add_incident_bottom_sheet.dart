@@ -1,7 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/incident_image_service.dart';
+import '../../../core/widgets/incident_image_viewer_dialog.dart';
 import '../../../models/performance_session_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../session/providers/timer_service.dart';
@@ -29,6 +32,11 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
   String _selectedCategory = 'Pha chế / Nước';
   String? _selectedStaff;
   bool _isSaving = false;
+  String? _uploadStatusText;
+
+  Uint8List? _incidentImageBytes;
+  bool _isFromCamera = false;
+  bool _isProcessingImage = false;
 
   final List<String> _categories = [
     'Pha chế / Nước',
@@ -46,6 +54,79 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
     super.dispose();
   }
 
+  Future<void> _pickFromCamera() async {
+    try {
+      final file = await IncidentImageService.pickFromCamera();
+      if (file == null) return;
+
+      setState(() => _isProcessingImage = true);
+
+      final rawBytes = await file.readAsBytes();
+      final user = ref.read(currentUserProvider).valueOrNull;
+      final reporterName = user?.name ?? widget.session.managerOnDutyName;
+
+      final stampedBytes = await IncidentImageService.stampCameraImage(
+        rawBytes: rawBytes,
+        storeName: widget.session.storeName,
+        reporterName: reporterName.isNotEmpty ? reporterName : 'Quản lý',
+        category: _selectedCategory,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _incidentImageBytes = stampedBytes;
+        _isFromCamera = true;
+        _isProcessingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessingImage = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể chụp ảnh: $e'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final file = await IncidentImageService.pickFromGallery();
+      if (file == null) return;
+
+      setState(() => _isProcessingImage = true);
+
+      final rawBytes = await file.readAsBytes();
+      final compressedBytes = await IncidentImageService.compressGalleryImage(rawBytes);
+
+      if (!mounted) return;
+      setState(() {
+        _incidentImageBytes = compressedBytes;
+        _isFromCamera = false;
+        _isProcessingImage = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isProcessingImage = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể chọn ảnh: $e'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _incidentImageBytes = null;
+      _isFromCamera = false;
+    });
+  }
+
   Future<void> _handleSave() async {
     final desc = _descController.text.trim();
     if (desc.isEmpty) {
@@ -59,19 +140,38 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
       return;
     }
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _uploadStatusText = 'Đang chuẩn bị lưu...';
+    });
 
     try {
       final user = ref.read(currentUserProvider).valueOrNull;
       final reporterName = user?.name ?? 'Quản lý';
+      final incidentId = const Uuid().v4();
+      String? imageUrl;
+
+      // Upload ảnh nếu có đính kèm
+      if (_incidentImageBytes != null) {
+        setState(() => _uploadStatusText = 'Đang tải ảnh minh chứng...');
+        imageUrl = await IncidentImageService.uploadIncidentImage(
+          imageBytes: _incidentImageBytes!,
+          storeId: widget.session.storeId,
+          sessionId: widget.session.id,
+          incidentId: incidentId,
+        );
+      }
+
+      setState(() => _uploadStatusText = 'Đang lưu sự cố...');
 
       final incident = PerformanceIncidentModel(
-        id: const Uuid().v4(),
+        id: incidentId,
         description: desc,
         category: _selectedCategory,
         staffName: _selectedStaff,
         reportedBy: reporterName,
         timestamp: DateTime.now(),
+        imageUrl: imageUrl,
       );
 
       final repo = ref.read(performanceRepositoryProvider);
@@ -284,7 +384,9 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
             const SizedBox(height: 8),
             TextField(
               controller: _descController,
-              maxLines: 3,
+              minLines: 3,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
               textCapitalization: TextCapitalization.sentences,
               style: const TextStyle(fontSize: 14, fontFamily: 'BeVietnamPro'),
               decoration: InputDecoration(
@@ -307,6 +409,182 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Photo Attachment Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.photo_camera_rounded, size: 16, color: Color(0xFFDC2626)),
+                    SizedBox(width: 6),
+                    Text(
+                      'Ảnh minh chứng',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'BeVietnamPro',
+                        color: AppColors.neutral,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  _incidentImageBytes != null ? 'Đã đính kèm ảnh' : 'Không bắt buộc',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: _incidentImageBytes != null ? AppColors.success : AppColors.textDisabled,
+                    fontWeight: _incidentImageBytes != null ? FontWeight.w700 : FontWeight.normal,
+                    fontFamily: 'BeVietnamPro',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (_isProcessingImage)
+              Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Color(0xFFDC2626), strokeWidth: 2),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Đang xử lý & đóng dấu ngày giờ...',
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_incidentImageBytes != null)
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDC2626).withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => IncidentImageViewerDialog.show(
+                        context,
+                        imageBytes: _incidentImageBytes,
+                        title: 'Ảnh minh chứng (${_isFromCamera ? "Camera đóng dấu" : "Thư viện"})',
+                      ),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              _incidentImageBytes!,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.zoom_in_rounded, color: Colors.white, size: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                _isFromCamera ? Icons.verified_rounded : Icons.photo_library_rounded,
+                                size: 14,
+                                color: _isFromCamera ? const Color(0xFF16A34A) : AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _isFromCamera ? 'Chụp ảnh (Đã đóng dấu)' : 'Từ thư viện ảnh',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _isFromCamera ? const Color(0xFF16A34A) : AppColors.neutral,
+                                  fontFamily: 'BeVietnamPro',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Dung lượng: ~${(_incidentImageBytes!.lengthInBytes / 1024).toStringAsFixed(0)} KB (Đã nén)',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Chạm vào ảnh để xem chi tiết',
+                            style: TextStyle(fontSize: 10.5, color: Color(0xFFDC2626), fontStyle: FontStyle.italic, fontFamily: 'BeVietnamPro'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: AppColors.danger, size: 22),
+                      tooltip: 'Xoá ảnh',
+                      onPressed: _removeImage,
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickFromCamera,
+                      icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                      label: const Text('Chụp ảnh', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFDC2626),
+                        side: const BorderSide(color: Color(0xFFDC2626), width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickFromGallery,
+                      icon: const Icon(Icons.photo_library_rounded, size: 18),
+                      label: const Text('Thư viện', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, fontFamily: 'BeVietnamPro')),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.neutral,
+                        side: const BorderSide(color: AppColors.border, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             const SizedBox(height: 20),
 
             // Save Button
@@ -320,10 +598,24 @@ class _AddIncidentBottomSheetState extends ConsumerState<AddIncidentBottomSheet>
                 elevation: 2,
               ),
               child: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _uploadStatusText ?? 'Đang lưu...',
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'BeVietnamPro',
+                          ),
+                        ),
+                      ],
                     )
                   : const Text(
                       'LƯU LỖI PHÁT SINH',

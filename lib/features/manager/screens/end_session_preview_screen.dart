@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/performance_calculator.dart';
+import '../../../core/widgets/incident_image_viewer_dialog.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_report_model.dart';
 import '../../../models/performance_session_model.dart';
@@ -638,7 +640,9 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
                               )
                             else if (c.type == 'text')
                               TextField(
-                                maxLines: 2,
+                                minLines: 2,
+                                maxLines: null,
+                                keyboardType: TextInputType.multiline,
                                 decoration: InputDecoration(
                                   hintText: 'Nhập nội dung ghi chú...',
                                   hintStyle: const TextStyle(fontSize: 13, color: AppColors.textDisabled),
@@ -787,6 +791,70 @@ class _EndSessionPreviewScreenState extends ConsumerState<EndSessionPreviewScree
                                   style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                                 ),
                               ),
+                            if (incident.imageUrl != null && incident.imageUrl!.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              GestureDetector(
+                                onTap: () => IncidentImageViewerDialog.show(
+                                  context,
+                                  imageUrl: incident.imageUrl,
+                                  title: 'Ảnh minh chứng • ${incident.category}',
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: CachedNetworkImage(
+                                          imageUrl: incident.imageUrl!,
+                                          width: 38,
+                                          height: 38,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Container(
+                                            width: 38,
+                                            height: 38,
+                                            color: Colors.grey.shade100,
+                                            child: const Center(child: SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))),
+                                          ),
+                                          errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 18, color: Colors.grey),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.image_rounded, size: 12, color: Color(0xFFDC2626)),
+                                              SizedBox(width: 3),
+                                              Text(
+                                                'Ảnh minh chứng',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFFDC2626),
+                                                  fontFamily: 'BeVietnamPro',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            'Chạm để xem ảnh',
+                                            style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -917,19 +985,30 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary, fontFamily: 'BeVietnamPro'),
+        Flexible(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+                fontSize: 13.5,
+                color: AppColors.textSecondary,
+                fontFamily: 'BeVietnamPro'),
+          ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'BeVietnamPro',
-            color: AppColors.neutral,
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 3,
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'BeVietnamPro',
+              color: AppColors.neutral,
+            ),
           ),
         ),
       ],

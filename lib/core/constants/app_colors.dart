@@ -4,7 +4,17 @@ class AppColors {
   AppColors._();
 
   // Brand Colors
-  static const Color primary = Color(0xFFCB2D2E); // Red from logo
+  static const Color primary =
+      Color(0xFF7E2930); // Trạm brand maroon for shared UI
+  static const Color primaryDark = Color(0xFF5C1F24);
+  static const Color ownerAccent = Color(0xFF171717);
+  static const Color ownerAccentDark = Color(0xFF050505);
+  static const Color ownerSurface = Color(0xFFF7F7F5);
+  static const Color ownerTint = Color(0xFFEDEBE6);
+  static const Color managerAccent = Color(0xFF126CC3);
+  static const Color managerAccentDark = Color(0xFF095AA8);
+  static const Color managerSurface = Color(0xFFF7FAFE);
+  static const Color managerTint = Color(0xFFE8F3FE);
   static const Color success = Color(0xFF1A6B5A); // Teal green
   static const Color accent = Color(0xFFEB9B28); // Orange/Yellow from logo
   static const Color info = Color(0xFF1C4E6B);
@@ -13,11 +23,16 @@ class AppColors {
   static const Color background = Color(0xFFF8F4EE);
   static const Color white = Colors.white;
 
+  // Performance Category Colors
+  static const Color categoryDrink = Color(0xFFE8192F); // Đỏ thương hiệu Trạm
+  static const Color categoryCake = Color(0xFFD97706); // Cam hổ phách
+  static const Color categoryOrder = Color(0xFF1C4E6B); // Xanh dương / Navy
+
   // Semantic Colors
   static const Color checkIn = success;
   static const Color checkOut = Color(0xFF888780);
   static const Color pending = accent;
-  static const Color danger = primary;
+  static const Color danger = Color(0xFFCB2D2E);
 
   // Text Colors
   static const Color textPrimary = Color(0xFF1A1A1A);
@@ -37,11 +52,11 @@ class AppColors {
   static const Color statusActive = success;
   static const Color statusInactive = Color(0xFF888780);
   static const Color statusPending = accent;
-  static const Color statusDanger = primary;
+  static const Color statusDanger = danger;
 
   // Role Badge Colors
-  static const Color ownerBadge = primary;
-  static const Color managerBadge = info;
+  static const Color ownerBadge = ownerAccent;
+  static const Color managerBadge = managerAccent;
   static const Color employeeBadge = Color(0xFF888780);
 
   // Shift Colors
@@ -54,7 +69,7 @@ class AppColors {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFE8192F), Color(0xFFC8102E)],
+    colors: [primary, primaryDark],
   );
 
   static const LinearGradient darkGradient = LinearGradient(
@@ -72,7 +87,7 @@ class AppColors {
   static const LinearGradient surfaceGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFC8102E), Color(0xFFF8F4EE)],
+    colors: [primary, surface],
     stops: [0.0, 0.45],
   );
 
@@ -82,7 +97,7 @@ class AppColors {
   );
 
   static const RadialGradient checkOutButtonGradient = RadialGradient(
-    colors: [Color(0xFFE8192F), Color(0xFFC8102E)],
+    colors: [primary, primaryDark],
     radius: 0.85,
   );
 }

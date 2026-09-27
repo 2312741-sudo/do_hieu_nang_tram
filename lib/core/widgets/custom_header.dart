@@ -8,7 +8,7 @@ class CustomHeader extends StatelessWidget {
   final String subtitle;
   final String? storeName;
   final VoidCallback? onStoreTap;
-  final bool isNavy;
+  final bool isOwner;
   final Widget? trailing;
 
   const CustomHeader({
@@ -17,7 +17,7 @@ class CustomHeader extends StatelessWidget {
     required this.subtitle,
     this.storeName,
     this.onStoreTap,
-    this.isNavy = false,
+    this.isOwner = false,
     this.trailing,
   });
 
@@ -33,11 +33,14 @@ class CustomHeader extends StatelessWidget {
     final greeting = _getGreeting(now.hour);
     final dateStr = DateFormat('EEEE, dd/MM/yyyy', 'vi').format(now);
 
-    final gradientColors = isNavy
-        ? const [Color(0xFF1C4E6B), Color(0xFF0A3247)]
-        : const [Color(0xFFC8102E), Color(0xFF8B0000)];
+    final roleColor = Theme.of(context).colorScheme.primary;
+    final ownerTheme = isOwner || roleColor == AppColors.ownerAccent;
+    final gradientColors = ownerTheme
+        ? const [AppColors.ownerAccent, AppColors.ownerAccentDark]
+        : const [AppColors.managerAccent, AppColors.managerAccentDark];
 
-    final effectiveStoreTap = onStoreTap ?? () => StoreAndAccountSheet.show(context);
+    final effectiveStoreTap =
+        onStoreTap ?? () => StoreAndAccountSheet.show(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -51,7 +54,7 @@ class CustomHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: (isNavy ? const Color(0xFF1C4E6B) : AppColors.primary).withOpacity(0.3),
+            color: roleColor.withOpacity(0.2),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -73,7 +76,7 @@ class CustomHeader extends StatelessWidget {
                         Text(
                           '$greeting, $subtitle',
                           style: const TextStyle(
-                            color: Colors.white70,
+                            color: Colors.white,
                             fontSize: 14,
                             fontFamily: 'BeVietnamPro',
                           ),
@@ -95,7 +98,8 @@ class CustomHeader extends StatelessWidget {
                     GestureDetector(
                       onTap: effectiveStoreTap,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
@@ -104,7 +108,8 @@ class CustomHeader extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.store_rounded, color: Colors.white, size: 14),
+                            const Icon(Icons.store_rounded,
+                                color: Colors.white, size: 14),
                             const SizedBox(width: 5),
                             ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 110),
@@ -120,7 +125,8 @@ class CustomHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                            const Icon(Icons.arrow_drop_down,
+                                color: Colors.white, size: 16),
                           ],
                         ),
                       ),
@@ -137,7 +143,8 @@ class CustomHeader extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white30),
                           ),
-                          child: const Icon(Icons.person_rounded, color: Colors.white, size: 18),
+                          child: const Icon(Icons.person_rounded,
+                              color: Colors.white, size: 18),
                         ),
                         tooltip: 'Tài khoản & Đăng xuất',
                         padding: EdgeInsets.zero,
@@ -148,12 +155,13 @@ class CustomHeader extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  const Icon(Icons.calendar_today_rounded, color: Colors.white60, size: 13),
+                  const Icon(Icons.calendar_today_rounded,
+                      color: Colors.white60, size: 13),
                   const SizedBox(width: 6),
                   Text(
                     dateStr,
                     style: const TextStyle(
-                      color: Colors.white70,
+                      color: Colors.white,
                       fontSize: 12.5,
                       fontFamily: 'BeVietnamPro',
                       fontWeight: FontWeight.w500,

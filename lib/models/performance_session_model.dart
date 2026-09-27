@@ -50,6 +50,7 @@ class PerformanceIncidentModel extends Equatable {
   final String? staffName;
   final String reportedBy;
   final DateTime timestamp;
+  final String? imageUrl;
 
   const PerformanceIncidentModel({
     required this.id,
@@ -58,6 +59,7 @@ class PerformanceIncidentModel extends Equatable {
     this.staffName,
     required this.reportedBy,
     required this.timestamp,
+    this.imageUrl,
   });
 
   factory PerformanceIncidentModel.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class PerformanceIncidentModel extends Equatable {
       staffName: json['staffName'] as String?,
       reportedBy: json['reportedBy'] as String? ?? '',
       timestamp: parseDate(json['timestamp']),
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 
@@ -84,6 +87,7 @@ class PerformanceIncidentModel extends Equatable {
     'staffName': staffName,
     'reportedBy': reportedBy,
     'timestamp': Timestamp.fromDate(timestamp),
+    if (imageUrl != null && imageUrl!.isNotEmpty) 'imageUrl': imageUrl,
   };
 
   PerformanceIncidentModel copyWith({
@@ -93,6 +97,7 @@ class PerformanceIncidentModel extends Equatable {
     String? staffName,
     String? reportedBy,
     DateTime? timestamp,
+    String? imageUrl,
   }) {
     return PerformanceIncidentModel(
       id: id ?? this.id,
@@ -101,11 +106,12 @@ class PerformanceIncidentModel extends Equatable {
       staffName: staffName ?? this.staffName,
       reportedBy: reportedBy ?? this.reportedBy,
       timestamp: timestamp ?? this.timestamp,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
   @override
-  List<Object?> get props => [id, description, category, staffName, reportedBy, timestamp];
+  List<Object?> get props => [id, description, category, staffName, reportedBy, timestamp, imageUrl];
 }
 
 class PerformanceSessionModel extends Equatable {
@@ -164,6 +170,16 @@ class PerformanceSessionModel extends Equatable {
   });
 
   bool get isActive => status == SessionStatus.active;
+
+  /// The authenticated user who created and owns this session.
+  ///
+  /// `managerId` is retained as the persisted field for backward compatibility;
+  /// `managerOnDutyId` identifies the separately selected shift manager.
+  String get createdByUserId => managerId;
+
+  bool canResume({required String storeId, required String userId}) {
+    return isActive && this.storeId == storeId && createdByUserId == userId;
+  }
 
   int get drinkAverageSeconds =>
       drinkTotalQuantity > 0 ? (drinkTotalSeconds / drinkTotalQuantity).round() : 0;

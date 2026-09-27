@@ -13,7 +13,7 @@ class AppTheme {
       onPrimary: AppColors.white,
       secondary: AppColors.accent,
       onSecondary: AppColors.neutral,
-      error: AppColors.primary,
+      error: AppColors.danger,
       surface: AppColors.surface,
       onSurface: AppColors.neutral,
     );

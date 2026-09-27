@@ -19,7 +19,8 @@ class StoreAndAccountSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<StoreAndAccountSheet> createState() => _StoreAndAccountSheetState();
+  ConsumerState<StoreAndAccountSheet> createState() =>
+      _StoreAndAccountSheetState();
 }
 
 class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
@@ -37,7 +38,9 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
     setState(() => _isSwitchingStore = true);
 
     try {
-      await ref.read(performanceSelectedStoreIdProvider.notifier).selectStore(targetStore.id);
+      await ref
+          .read(performanceSelectedStoreIdProvider.notifier)
+          .selectStore(targetStore.id);
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -68,7 +71,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?'),
+        content: const Text(
+            'Bạn có chắc chắn muốn đăng xuất khỏi tài khoản hiện tại không?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -161,7 +165,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
           Navigator.of(context, rootNavigator: true).pop(); // pop loading
           String errorMessage = 'Không thể xóa tài khoản: $e';
           if (e.toString().contains('requires-recent-login')) {
-            errorMessage = 'Vì lý do bảo mật, vui lòng đăng nhập lại trước khi xóa tài khoản.';
+            errorMessage =
+                'Vì lý do bảo mật, vui lòng đăng nhập lại trước khi xóa tài khoản.';
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -233,12 +238,16 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                     CircleAvatar(
                       radius: 26,
                       backgroundColor: AppColors.primary,
-                      backgroundImage: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                          ? NetworkImage(user.avatarUrl!)
-                          : null,
+                      backgroundImage:
+                          user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                              ? NetworkImage(user.avatarUrl!)
+                              : null,
                       child: user?.avatarUrl == null || user!.avatarUrl!.isEmpty
                           ? Text(
-                              (user?.name.isNotEmpty == true ? user!.name[0] : 'U').toUpperCase(),
+                              (user?.name.isNotEmpty == true
+                                      ? user!.name[0]
+                                      : 'U')
+                                  .toUpperCase(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -272,7 +281,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                           ),
                           const SizedBox(height: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: roleBgColor,
                               borderRadius: BorderRadius.circular(8),
@@ -318,11 +328,14 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
               userStoresWithRoleAsync.when(
                 loading: () => const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
-                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  child: Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary)),
                 ),
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Text('Lỗi tải danh sách cửa hàng: $e', style: const TextStyle(color: AppColors.danger)),
+                  child: Text('Lỗi tải danh sách cửa hàng: $e',
+                      style: const TextStyle(color: AppColors.danger)),
                 ),
                 data: (storesWithRole) {
                   if (storesWithRole.isEmpty) {
@@ -335,7 +348,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                       child: const Center(
                         child: Text(
                           'Bạn chưa tham gia cửa hàng nào.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 13),
                         ),
                       ),
                     );
@@ -351,7 +365,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: storesWithRole.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: AppColors.border),
                       itemBuilder: (context, index) {
                         final item = storesWithRole[index];
                         final store = item.store;
@@ -361,68 +376,83 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                         final itemRoleLabel = role.label;
                         final itemRoleColor = role == UserRole.owner
                             ? AppColors.primary
-                            : (role.isManager ? const Color(0xFF22876D) : Colors.grey.shade600);
+                            : (role.isManager
+                                ? const Color(0xFF22876D)
+                                : Colors.grey.shade600);
 
                         return InkWell(
                           onTap: _isSwitchingStore
                               ? null
                               : () async {
-                                  if (role == UserRole.employee && store.id != currentStoreId) {
-                                    final confirm = await showDialog<bool>(
+                                  if (role == UserRole.employee &&
+                                      store.id != currentStoreId) {
+                                    await showDialog<void>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                        title: const Text('Lưu ý vai trò Nhân viên'),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16)),
+                                        title: const Text(
+                                            'Không đủ quyền truy cập'),
                                         content: Text(
                                           'Tài khoản của bạn tại "${store.name}" có vai trò Nhân viên.\n\nỨng dụng Đo Hiệu Năng yêu cầu quyền Quản lý hoặc Chủ cửa hàng.',
                                         ),
                                         actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(ctx, false),
-                                            child: const Text('HỦY'),
-                                          ),
                                           ElevatedButton(
-                                            onPressed: () => Navigator.pop(ctx, true),
+                                            onPressed: () => Navigator.pop(ctx),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.neutral,
+                                              backgroundColor:
+                                                  AppColors.neutral,
                                               foregroundColor: Colors.white,
                                             ),
-                                            child: const Text('VẪN CHUYỂN'),
+                                            child: const Text('ĐÃ HIỂU'),
                                           ),
                                         ],
                                       ),
                                     );
-                                    if (confirm != true) return;
+                                    return;
                                   }
                                   _handleSwitchStore(store);
                                 },
                           borderRadius: BorderRadius.vertical(
-                            top: index == 0 ? const Radius.circular(16) : Radius.zero,
-                            bottom: index == storesWithRole.length - 1 ? const Radius.circular(16) : Radius.zero,
+                            top: index == 0
+                                ? const Radius.circular(16)
+                                : Radius.zero,
+                            bottom: index == storesWithRole.length - 1
+                                ? const Radius.circular(16)
+                                : Radius.zero,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
                             child: Row(
                               children: [
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.white,
+                                    color: isSelected
+                                        ? AppColors.primary.withOpacity(0.1)
+                                        : Colors.white,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                      color: isSelected ? AppColors.primary.withOpacity(0.3) : Colors.grey.shade300,
+                                      color: isSelected
+                                          ? AppColors.primary.withOpacity(0.3)
+                                          : Colors.grey.shade300,
                                     ),
                                   ),
                                   child: Icon(
                                     Icons.storefront_rounded,
-                                    color: isSelected ? AppColors.primary : Colors.grey.shade600,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.grey.shade600,
                                     size: 20,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -431,17 +461,24 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                                               store.name,
                                               style: TextStyle(
                                                 fontSize: 14,
-                                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w800
+                                                    : FontWeight.w600,
                                                 fontFamily: 'BeVietnamPro',
-                                                color: isSelected ? AppColors.primary : AppColors.neutral,
+                                                color: isSelected
+                                                    ? AppColors.primary
+                                                    : AppColors.neutral,
                                               ),
                                             ),
                                           ),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: itemRoleColor.withOpacity(0.12),
-                                              borderRadius: BorderRadius.circular(6),
+                                              color: itemRoleColor
+                                                  .withOpacity(0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
                                             child: Text(
                                               itemRoleLabel,
@@ -471,9 +508,11 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                                 ),
                                 const SizedBox(width: 8),
                                 if (isSelected)
-                                  const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 22)
+                                  const Icon(Icons.check_circle_rounded,
+                                      color: AppColors.primary, size: 22)
                                 else
-                                  Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400, size: 20),
+                                  Icon(Icons.chevron_right_rounded,
+                                      color: Colors.grey.shade400, size: 20),
                               ],
                             ),
                           ),
@@ -497,7 +536,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(14),
@@ -505,7 +545,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
+                      Icon(Icons.info_outline_rounded,
+                          color: AppColors.primary, size: 20),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -519,7 +560,7 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                         ),
                       ),
                       Text(
-                        'v1.0.4',
+                        'v1.0.7',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -528,7 +569,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                         ),
                       ),
                       SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 14, color: Colors.grey),
                     ],
                   ),
                 ),
@@ -542,12 +584,14 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
                   side: const BorderSide(color: AppColors.danger, width: 1.5),
                   foregroundColor: AppColors.danger,
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.logout_rounded, size: 18, color: AppColors.danger),
+                    Icon(Icons.logout_rounded,
+                        size: 18, color: AppColors.danger),
                     SizedBox(width: 8),
                     Text(
                       'ĐĂNG XUẤT',
@@ -569,7 +613,8 @@ class _StoreAndAccountSheetState extends ConsumerState<StoreAndAccountSheet> {
               Center(
                 child: TextButton.icon(
                   onPressed: _confirmDeleteAccount,
-                  icon: const Icon(Icons.delete_forever_rounded, size: 18, color: Colors.grey),
+                  icon: const Icon(Icons.delete_forever_rounded,
+                      size: 18, color: Colors.grey),
                   label: const Text(
                     'Xóa tài khoản vĩnh viễn',
                     style: TextStyle(

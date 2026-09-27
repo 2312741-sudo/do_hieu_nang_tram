@@ -1,8 +1,30 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/performance_session_model.dart';
 import '../../../models/measurement_model.dart';
 import '../../../models/performance_report_model.dart';
 import '../../../models/schedule_model.dart';
+
+const int firestoreWhereInLimit = 30;
+
+List<List<String>> chunkPerformanceStoreIds(Iterable<String> storeIds) {
+  final uniqueIds = <String>[];
+  final seen = <String>{};
+  for (final rawId in storeIds) {
+    final id = rawId.trim();
+    if (id.isNotEmpty && seen.add(id)) uniqueIds.add(id);
+  }
+
+  return [
+    for (var start = 0;
+        start < uniqueIds.length;
+        start += firestoreWhereInLimit)
+      uniqueIds.sublist(
+        start,
+        (start + firestoreWhereInLimit).clamp(0, uniqueIds.length),
+      ),
+  ];
+}
 
 class PerformanceRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,7 +35,8 @@ class PerformanceRepository {
   CollectionReference<Map<String, dynamic>> get _reportsCol =>
       _firestore.collection('performance_reports');
 
-  CollectionReference<Map<String, dynamic>> _measurementsCol(String sessionId) =>
+  CollectionReference<Map<String, dynamic>> _measurementsCol(
+          String sessionId) =>
       _sessionsCol.doc(sessionId).collection('measurements');
 
   // ---------- SESSIONS ----------
@@ -22,14 +45,23 @@ class PerformanceRepository {
     await _sessionsCol.doc(session.id).set(session.toJson());
   }
 
-  Stream<PerformanceSessionModel?> watchActiveSession(String storeId) {
+  Stream<PerformanceSessionModel?> watchActiveSession({
+    required String storeId,
+    required String userId,
+  }) {
     return _sessionsCol
         .where('storeId', isEqualTo: storeId)
+        .where('managerId', isEqualTo: userId)
         .where('status', isEqualTo: 'active')
         .snapshots()
         .map((snap) {
       if (snap.docs.isEmpty) return null;
-      final sessions = snap.docs.map((d) => PerformanceSessionModel.fromFirestore(d)).toList();
+      final sessions = snap.docs
+          .map((d) => PerformanceSessionModel.fromFirestore(d))
+          .where(
+              (session) => session.canResume(storeId: storeId, userId: userId))
+          .toList();
+      if (sessions.isEmpty) return null;
       sessions.sort((a, b) => b.startedAt.compareTo(a.startedAt));
       return sessions.first;
     });
@@ -66,14 +98,16 @@ class PerformanceRepository {
     });
   }
 
-  Future<void> addSessionIncident(String sessionId, PerformanceIncidentModel incident) async {
+  Future<void> addSessionIncident(
+      String sessionId, PerformanceIncidentModel incident) async {
     await _sessionsCol.doc(sessionId).update({
       'incidents': FieldValue.arrayUnion([incident.toJson()]),
       'updatedAt': Timestamp.now(),
     });
   }
 
-  Future<void> removeSessionIncident(String sessionId, PerformanceIncidentModel incident) async {
+  Future<void> removeSessionIncident(
+      String sessionId, PerformanceIncidentModel incident) async {
     await _sessionsCol.doc(sessionId).update({
       'incidents': FieldValue.arrayRemove([incident.toJson()]),
       'updatedAt': Timestamp.now(),
@@ -84,7 +118,8 @@ class PerformanceRepository {
 
   Stream<List<MeasurementModel>> watchMeasurements(String sessionId) {
     return _measurementsCol(sessionId).snapshots().map((snap) {
-      final list = snap.docs.map((doc) => MeasurementModel.fromFirestore(doc)).toList();
+      final list =
+          snap.docs.map((doc) => MeasurementModel.fromFirestore(doc)).toList();
       list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       return list;
     });
@@ -158,24 +193,79 @@ class PerformanceRepository {
     });
   }
 
-  Stream<List<PerformanceReportModel>> watchReportsForStores(List<String> storeIds) {
-    final validIds = storeIds.where((id) => id.trim().isNotEmpty).take(30).toList();
-    if (validIds.isEmpty) {
+  Stream<List<PerformanceReportModel>> watchReportsForStores(
+      List<String> storeIds) {
+    final chunks = chunkPerformanceStoreIds(storeIds);
+    if (chunks.isEmpty) {
       return Stream.value([]);
     }
-    return _reportsCol
-        .where('storeId', whereIn: validIds)
-        .snapshots()
-        .map((snap) {
-      final list = snap.docs
-          .map((doc) => PerformanceReportModel.fromFirestore(doc))
-          .toList();
-      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return list;
-    });
+
+    Stream<List<PerformanceReportModel>> watchChunk(List<String> ids) {
+      return _reportsCol.where('storeId', whereIn: ids).snapshots().map(
+            (snap) => snap.docs
+                .map((doc) => PerformanceReportModel.fromFirestore(doc))
+                .toList(),
+          );
+    }
+
+    if (chunks.length == 1) {
+      return watchChunk(chunks.first).map((reports) {
+        reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return reports;
+      });
+    }
+
+    late StreamController<List<PerformanceReportModel>> controller;
+    final subscriptions = <StreamSubscription<List<PerformanceReportModel>>>[];
+    final reportsByChunk = <int, List<PerformanceReportModel>>{};
+
+    void emitCombinedReports() {
+      final reportsById = <String, PerformanceReportModel>{};
+      for (final reports in reportsByChunk.values) {
+        for (final report in reports) {
+          reportsById[report.id] = report;
+        }
+      }
+      final combined = reportsById.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      controller.add(combined);
+    }
+
+    controller = StreamController<List<PerformanceReportModel>>(
+      onListen: () {
+        for (var index = 0; index < chunks.length; index++) {
+          subscriptions.add(
+            watchChunk(chunks[index]).listen(
+              (reports) {
+                reportsByChunk[index] = reports;
+                emitCombinedReports();
+              },
+              onError: controller.addError,
+            ),
+          );
+        }
+      },
+      onPause: () {
+        for (final subscription in subscriptions) {
+          subscription.pause();
+        }
+      },
+      onResume: () {
+        for (final subscription in subscriptions) {
+          subscription.resume();
+        }
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+    return controller.stream;
   }
 
-  Stream<List<PerformanceReportModel>> watchAllReports([List<String>? fallbackStoreIds]) {
+  Stream<List<PerformanceReportModel>> watchAllReports(
+      [List<String>? fallbackStoreIds]) {
     // Không bao giờ query toàn bộ collection mà không có storeId filter
     // để tránh bị Firestore Security Rules chặn lỗi permission-denied.
     if (fallbackStoreIds != null && fallbackStoreIds.isNotEmpty) {
@@ -209,7 +299,8 @@ class PerformanceRepository {
 
   Stream<int> watchUnviewedReportsCountForStores(List<String> storeIds) {
     return watchReportsForStores(storeIds).map(
-      (reports) => reports.where((r) => r.status == ReportStatus.submitted).length,
+      (reports) =>
+          reports.where((r) => r.status == ReportStatus.submitted).length,
     );
   }
 
@@ -251,8 +342,12 @@ class PerformanceRepository {
       }
 
       bool shouldDelete = deleteAll;
-      if (!deleteAll && sessionDate != null && startDate != null && endDate != null) {
-        shouldDelete = sessionDate.isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
+      if (!deleteAll &&
+          sessionDate != null &&
+          startDate != null &&
+          endDate != null) {
+        shouldDelete = sessionDate
+                .isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
             sessionDate.isBefore(endDate.add(const Duration(milliseconds: 1)));
       }
 
@@ -285,8 +380,12 @@ class PerformanceRepository {
       }
 
       bool shouldDelete = deleteAll;
-      if (!deleteAll && reportDate != null && startDate != null && endDate != null) {
-        shouldDelete = reportDate.isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
+      if (!deleteAll &&
+          reportDate != null &&
+          startDate != null &&
+          endDate != null) {
+        shouldDelete = reportDate
+                .isAfter(startDate.subtract(const Duration(milliseconds: 1))) &&
             reportDate.isBefore(endDate.add(const Duration(milliseconds: 1)));
       }
 
@@ -306,7 +405,8 @@ class PerformanceRepository {
   // ---------- SCHEDULES (CHAM CONG READ-ONLY) ----------
 
   /// Đọc dữ liệu lịch làm việc theo tuần từ Firestore (/stores/{storeId}/schedules/{weekStart})
-  Future<ScheduleModel?> getWeekSchedule(String storeId, String weekStart) async {
+  Future<ScheduleModel?> getWeekSchedule(
+      String storeId, String weekStart) async {
     try {
       final doc = await _firestore
           .collection('stores')
@@ -335,4 +435,3 @@ class PerformanceRepository {
     });
   }
 }
-

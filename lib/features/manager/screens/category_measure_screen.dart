@@ -16,13 +16,16 @@ class CategoryMeasureScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(performanceTimerProvider);
-    final allMeasurements = ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
+    final allMeasurements =
+        ref.watch(sessionMeasurementsProvider).valueOrNull ?? [];
     final categoryMeasurements = allMeasurements
         .where((m) => m.category == category && !m.status.isCancelled)
         .toList();
 
-    final activeTimers = categoryMeasurements.where((m) => m.status.isActive).toList();
-    final completedMeasurements = categoryMeasurements.where((m) => m.status.isCompleted).toList();
+    final activeTimers =
+        categoryMeasurements.where((m) => m.status.isActive).toList();
+    final completedMeasurements =
+        categoryMeasurements.where((m) => m.status.isCompleted).toList();
 
     final count = categoryMeasurements.length;
     final isMaxReached = count >= 20;
@@ -30,7 +33,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
     // Summary calculations
     final totalQuantity = completedMeasurements.fold<int>(
       0,
-      (sum, m) => sum + (category == PerformanceCategory.order ? 1 : m.quantity),
+      (sum, m) =>
+          sum + (category == PerformanceCategory.order ? 1 : m.quantity),
     );
     final totalDuration = completedMeasurements.fold<int>(
       0,
@@ -38,25 +42,34 @@ class CategoryMeasureScreen extends ConsumerWidget {
     );
 
     final avgSeconds = category == PerformanceCategory.order
-        ? PerformanceCalculator.calculateCountAverage(totalSeconds: totalDuration, count: completedMeasurements.length)
-        : PerformanceCalculator.calculateWeightedAverage(totalSeconds: totalDuration, totalQuantity: totalQuantity);
+        ? PerformanceCalculator.calculateCountAverage(
+            totalSeconds: totalDuration, count: completedMeasurements.length)
+        : PerformanceCalculator.calculateWeightedAverage(
+            totalSeconds: totalDuration, totalQuantity: totalQuantity);
 
     final formattedAvg = PerformanceCalculator.formatSeconds(avgSeconds);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // Header
           SliverToBoxAdapter(
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFFC8102E), Color(0xFF8B0000)],
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary ==
+                            AppColors.ownerAccent
+                        ? AppColors.ownerAccentDark
+                        : AppColors.managerAccentDark
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(bottom: Radius.circular(32)),
               ),
               child: SafeArea(
                 bottom: false,
@@ -68,7 +81,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
                         children: [
                           IconButton(
                             onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white, size: 20),
                           ),
                           Expanded(
                             child: Text(
@@ -84,7 +98,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(16),
@@ -108,9 +123,12 @@ class CategoryMeasureScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: _MetricCard(
-                              label: category == PerformanceCategory.order ? 'Tổng số đơn' : 'Tổng số lượng',
+                              label: category == PerformanceCategory.order
+                                  ? 'Tổng số đơn'
+                                  : 'Tổng số lượng',
                               value: '$totalQuantity',
-                              unit: category.unitLabel.replaceAll('/', '').trim(),
+                              unit:
+                                  category.unitLabel.replaceAll('/', '').trim(),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -152,7 +170,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
                         ? () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Đã đạt tối đa 20 lần đo cho mục này.'),
+                                content: Text(
+                                    'Đã đạt tối đa 20 lần đo cho mục này.'),
                                 backgroundColor: AppColors.neutral,
                               ),
                             );
@@ -160,7 +179,9 @@ class CategoryMeasureScreen extends ConsumerWidget {
                         : () => AddTimerBottomSheet.show(context, category),
                     icon: const Icon(Icons.add_rounded, size: 22),
                     label: Text(
-                      isMaxReached ? 'ĐÃ ĐẠT TỐI ĐA 20 LẦN ĐO' : '+ THÊM LẦN ĐO',
+                      isMaxReached
+                          ? 'ĐÃ ĐẠT TỐI ĐA 20 LẦN ĐO'
+                          : '+ THÊM LẦN ĐO',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -168,10 +189,13 @@ class CategoryMeasureScreen extends ConsumerWidget {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isMaxReached ? AppColors.textDisabled : AppColors.primary,
+                      backgroundColor: isMaxReached
+                          ? AppColors.textDisabled
+                          : Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
                       elevation: isMaxReached ? 0 : 3,
                     ),
                   ),
@@ -203,7 +227,9 @@ class CategoryMeasureScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     ...activeTimers.map((timer) {
-                      final itemIdx = PerformanceCalculator.getCategorySequenceNumber(timer, allMeasurements);
+                      final itemIdx =
+                          PerformanceCalculator.getCategorySequenceNumber(
+                              timer, allMeasurements);
                       return TimerCard(timer: timer, itemNumber: itemIdx);
                     }),
                     const SizedBox(height: 20),
@@ -212,7 +238,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
                   // Completed Section
                   Row(
                     children: [
-                      const Icon(Icons.check_circle_outline_rounded, size: 18, color: AppColors.textSecondary),
+                      const Icon(Icons.check_circle_outline_rounded,
+                          size: 18, color: AppColors.textSecondary),
                       const SizedBox(width: 6),
                       Text(
                         'Đã hoàn thành (${completedMeasurements.length})',
@@ -245,12 +272,18 @@ class CategoryMeasureScreen extends ConsumerWidget {
                     )
                   else
                     ...completedMeasurements.reversed.map((m) {
-                      final seqNum = PerformanceCalculator.getCategorySequenceNumber(m, allMeasurements);
+                      final seqNum =
+                          PerformanceCalculator.getCategorySequenceNumber(
+                              m, allMeasurements);
                       final timeFmt = DateFormat('HH:mm');
                       final startStr = timeFmt.format(m.startedAt);
-                      final endStr = m.completedAt != null ? timeFmt.format(m.completedAt!) : '--:--';
-                      final durStr = PerformanceCalculator.formatSeconds(m.durationSeconds);
-                      final perItemStr = PerformanceCalculator.formatSeconds(m.secondsPerItem);
+                      final endStr = m.completedAt != null
+                          ? timeFmt.format(m.completedAt!)
+                          : '--:--';
+                      final durStr = PerformanceCalculator.formatSeconds(
+                          m.durationSeconds);
+                      final perItemStr =
+                          PerformanceCalculator.formatSeconds(m.secondsPerItem);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -269,17 +302,18 @@ class CategoryMeasureScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
                                 'Lần $seqNum',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontFamily: 'BeVietnamPro',
-                                  color: AppColors.primary,
+                                  color: Theme.of(context).colorScheme.primary,
                                   fontSize: 12.5,
                                 ),
                               ),
@@ -323,7 +357,8 @@ class CategoryMeasureScreen extends ConsumerWidget {
                                     color: AppColors.neutral,
                                   ),
                                 ),
-                                if (category != PerformanceCategory.order && m.quantity > 1) ...[
+                                if (category != PerformanceCategory.order &&
+                                    m.quantity > 1) ...[
                                   const SizedBox(height: 2),
                                   Text(
                                     '$perItemStr ${category.unitLabel}',

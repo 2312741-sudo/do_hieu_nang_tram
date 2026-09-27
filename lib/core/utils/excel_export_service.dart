@@ -100,6 +100,13 @@ class ExcelExportService {
         horizontalAlign: HorizontalAlign.Center,
       );
 
+      final hyperlinkStyle = CellStyle(
+        fontColorHex: ExcelColor.fromHexString('#0284C7'),
+        underline: Underline.Single,
+        bold: true,
+        horizontalAlign: HorizontalAlign.Center,
+      );
+
       final timeFmt = DateFormat('HH:mm');
       final dateFmt = DateFormat('dd/MM/yyyy');
 
@@ -745,6 +752,7 @@ class ExcelExportService {
           'Chi tiết sự cố / lỗi phát sinh',
           'Nhân sự liên quan',
           'Người ghi nhận',
+          'Ảnh minh chứng',
         ];
         for (int c = 0; c < incidentHeaders.length; c++) {
           final cell = sheet5.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0));
@@ -754,6 +762,7 @@ class ExcelExportService {
 
         for (int i = 0; i < report.incidents.length; i++) {
           final inc = report.incidents[i];
+          final hasImage = inc.imageUrl != null && inc.imageUrl!.isNotEmpty;
           final row = [
             IntCellValue(i + 1),
             TextCellValue(timeFmt.format(inc.timestamp)),
@@ -761,11 +770,18 @@ class ExcelExportService {
             TextCellValue(inc.description),
             TextCellValue(inc.staffName ?? '--'),
             TextCellValue(inc.reportedBy),
+            hasImage
+                ? FormulaCellValue('HYPERLINK("${inc.imageUrl}", "🔗 Xem ảnh minh chứng")')
+                : TextCellValue('--'),
           ];
           for (int c = 0; c < row.length; c++) {
             final cell = sheet5.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: i + 1));
             cell.value = row[c];
-            if (c == 0 || c == 1) cell.cellStyle = centerStyle;
+            if (c == 0 || c == 1) {
+              cell.cellStyle = centerStyle;
+            } else if (c == 6) {
+              cell.cellStyle = hasImage ? hyperlinkStyle : centerStyle;
+            }
           }
         }
         sheet5.setColumnWidth(0, 8);
@@ -774,6 +790,7 @@ class ExcelExportService {
         sheet5.setColumnWidth(3, 42);
         sheet5.setColumnWidth(4, 20);
         sheet5.setColumnWidth(5, 20);
+        sheet5.setColumnWidth(6, 26);
       }
 
       // Clean up default Sheet1 if exists

@@ -27,15 +27,15 @@ class OwnerOverviewTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).valueOrNull;
     final store = ref.watch(currentStoreProvider).valueOrNull;
-    final storesAsync = ref.watch(userStoresProvider);
-    final stores = storesAsync.valueOrNull ?? [];
+    final stores = ref.watch(performanceAccessibleStoresProvider);
     final repo = ref.watch(performanceRepositoryProvider);
 
     final Stream<List<PerformanceReportModel>> reportsStream;
     if (store != null) {
       reportsStream = repo.watchReportsForStore(store.id);
     } else if (stores.isNotEmpty) {
-      reportsStream = repo.watchReportsForStores(stores.map((s) => s.id).toList());
+      reportsStream =
+          repo.watchReportsForStores(stores.map((s) => s.id).toList());
     } else {
       reportsStream = Stream.value([]);
     }
@@ -45,7 +45,7 @@ class OwnerOverviewTab extends ConsumerWidget {
     final timeFmt = DateFormat('HH:mm');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
+      backgroundColor: AppColors.ownerSurface,
       body: CustomScrollView(
         slivers: [
           // Header
@@ -54,7 +54,7 @@ class OwnerOverviewTab extends ConsumerWidget {
               title: AppStrings.appName.toUpperCase(),
               subtitle: firstName,
               storeName: store?.name,
-              isNavy: true,
+              isOwner: true,
             ),
           ),
 
@@ -66,7 +66,8 @@ class OwnerOverviewTab extends ConsumerWidget {
                 stream: reportsStream,
                 builder: (context, snapshot) {
                   final reports = snapshot.data ?? [];
-                  final unviewedReports = reports.where((r) => !r.isViewed).toList();
+                  final unviewedReports =
+                      reports.where((r) => !r.isViewed).toList();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,17 +79,21 @@ class OwnerOverviewTab extends ConsumerWidget {
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFC8102E), Color(0xFF8B0000)],
+                              colors: [
+                                AppColors.ownerAccent,
+                                AppColors.ownerAccentDark
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.25),
+                                color: AppColors.ownerAccent.withOpacity(0.25),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -155,7 +160,9 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const StaffLeaderboardScreen(),
+                                    builder: (_) => InheritedTheme.captureAll(
+                                        context,
+                                        const StaffLeaderboardScreen()),
                                   ),
                                 );
                               },
@@ -164,13 +171,19 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFF1C4E6B), Color(0xFF26668B)],
+                                    colors: [
+                                      AppColors.ownerAccent,
+                                      Color(0xFF3B3B3B)
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: const [
-                                    BoxShadow(color: Color(0x181C4E6B), blurRadius: 10, offset: Offset(0, 4)),
+                                    BoxShadow(
+                                        color: Color(0x181C4E6B),
+                                        blurRadius: 10,
+                                        offset: Offset(0, 4)),
                                   ],
                                 ),
                                 child: Column(
@@ -182,7 +195,10 @@ class OwnerOverviewTab extends ConsumerWidget {
                                         color: Colors.white.withOpacity(0.18),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD700), size: 22),
+                                      child: const Icon(
+                                          Icons.emoji_events_rounded,
+                                          color: Color(0xFFFFD700),
+                                          size: 22),
                                     ),
                                     const SizedBox(height: 10),
                                     const Text(
@@ -215,7 +231,8 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const StorePerformanceSettingsScreen(),
+                                    builder: (_) =>
+                                        const StorePerformanceSettingsScreen(),
                                   ),
                                 );
                               },
@@ -227,7 +244,10 @@ class OwnerOverviewTab extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: AppColors.border),
                                   boxShadow: const [
-                                    BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+                                    BoxShadow(
+                                        color: Color(0x06000000),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2)),
                                   ],
                                 ),
                                 child: Column(
@@ -236,10 +256,13 @@ class OwnerOverviewTab extends ConsumerWidget {
                                     Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.1),
+                                        color: AppColors.ownerAccent
+                                            .withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 22),
+                                      child: const Icon(Icons.tune_rounded,
+                                          color: AppColors.ownerAccent,
+                                          size: 22),
                                     ),
                                     const SizedBox(height: 10),
                                     const Text(
@@ -274,7 +297,8 @@ class OwnerOverviewTab extends ConsumerWidget {
                         onTap: () => DeleteMeasurementDataDialog.show(context),
                         borderRadius: BorderRadius.circular(14),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
                             color: Colors.red.shade50.withOpacity(0.8),
                             borderRadius: BorderRadius.circular(14),
@@ -342,7 +366,7 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 height: 8,
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: AppColors.primary,
+                                  color: AppColors.ownerAccent,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -367,7 +391,7 @@ class OwnerOverviewTab extends ConsumerWidget {
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'BeVietnamPro',
-                                  color: AppColors.primary,
+                                  color: AppColors.ownerAccent,
                                 ),
                               ),
                             ),
@@ -383,12 +407,16 @@ class OwnerOverviewTab extends ConsumerWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: const [
-                              BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+                              BoxShadow(
+                                  color: Color(0x06000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2)),
                             ],
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.mark_email_read_outlined, size: 44, color: Colors.grey.shade400),
+                              Icon(Icons.mark_email_read_outlined,
+                                  size: 44, color: Colors.grey.shade400),
                               const SizedBox(height: 10),
                               const Text(
                                 'Không có báo cáo mới chưa xem.',
@@ -415,7 +443,8 @@ class OwnerOverviewTab extends ConsumerWidget {
                       else
                         ...unviewedReports.take(3).map((report) {
                           final dateStr = dateFmt.format(report.startedAt);
-                          final timeStr = '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
+                          final timeStr =
+                              '${timeFmt.format(report.startedAt)} – ${timeFmt.format(report.endedAt)}';
 
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
@@ -424,11 +453,14 @@ class OwnerOverviewTab extends ConsumerWidget {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: AppColors.primary.withOpacity(0.3),
+                                color: AppColors.ownerAccent.withOpacity(0.3),
                                 width: 1.5,
                               ),
                               boxShadow: const [
-                                BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
+                                BoxShadow(
+                                    color: Color(0x0A000000),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 4)),
                               ],
                             ),
                             child: Column(
@@ -448,22 +480,26 @@ class OwnerOverviewTab extends ConsumerWidget {
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withOpacity(0.12),
+                                        color: AppColors.ownerAccent
+                                            .withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(Icons.fiber_manual_record, size: 8, color: AppColors.primary),
+                                          Icon(Icons.fiber_manual_record,
+                                              size: 8,
+                                              color: AppColors.ownerAccent),
                                           SizedBox(width: 4),
                                           Text(
                                             'Chưa xem',
                                             style: TextStyle(
                                               fontSize: 11.5,
                                               fontWeight: FontWeight.w800,
-                                              color: AppColors.primary,
+                                              color: AppColors.ownerAccent,
                                               fontFamily: 'BeVietnamPro',
                                             ),
                                           ),
@@ -475,7 +511,8 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Icon(Icons.person_rounded, size: 15, color: AppColors.info),
+                                    const Icon(Icons.person_rounded,
+                                        size: 15, color: AppColors.info),
                                     const SizedBox(width: 6),
                                     Text(
                                       'Quản lý: ${report.managerOnDutyName}',
@@ -490,7 +527,9 @@ class OwnerOverviewTab extends ConsumerWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.textSecondary),
+                                    const Icon(Icons.schedule_rounded,
+                                        size: 14,
+                                        color: AppColors.textSecondary),
                                     const SizedBox(width: 6),
                                     Text(
                                       '$dateStr  $timeStr',
@@ -506,19 +545,23 @@ class OwnerOverviewTab extends ConsumerWidget {
 
                                 // Metric Pills
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
                                   children: [
                                     _MiniStat(
                                       label: 'Nước',
-                                      val: PerformanceCalculator.formatSeconds(report.drinkAverageSeconds),
+                                      val: PerformanceCalculator.formatSeconds(
+                                          report.drinkAverageSeconds),
                                     ),
                                     _MiniStat(
                                       label: 'Bánh',
-                                      val: PerformanceCalculator.formatSeconds(report.cakeAverageSeconds),
+                                      val: PerformanceCalculator.formatSeconds(
+                                          report.cakeAverageSeconds),
                                     ),
                                     _MiniStat(
                                       label: 'Đơn',
-                                      val: PerformanceCalculator.formatSeconds(report.orderAverageSeconds),
+                                      val: PerformanceCalculator.formatSeconds(
+                                          report.orderAverageSeconds),
                                     ),
                                   ],
                                 ),
@@ -529,15 +572,22 @@ class OwnerOverviewTab extends ConsumerWidget {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => ReportDetailScreen(report: report),
+                                        builder: (_) =>
+                                            InheritedTheme.captureAll(
+                                                context,
+                                                ReportDetailScreen(
+                                                    report: report)),
                                       ),
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
+                                    backgroundColor: AppColors.ownerAccent,
                                     foregroundColor: Colors.white,
-                                    minimumSize: const Size(double.infinity, 44),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    minimumSize:
+                                        const Size(double.infinity, 44),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
                                     elevation: 1,
                                   ),
                                   child: const Text(
@@ -585,7 +635,7 @@ class OwnerOverviewTab extends ConsumerWidget {
                               title: 'Chưa xem',
                               value: '${unviewedReports.length}',
                               icon: Icons.markunread_rounded,
-                              color: AppColors.primary,
+                              color: AppColors.ownerAccent,
                             ),
                           ),
                         ],
@@ -612,9 +662,19 @@ class _MiniStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.neutral, fontFamily: 'BeVietnamPro')),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.neutral,
+                fontFamily: 'BeVietnamPro')),
         const SizedBox(height: 2),
-        Text(val, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.neutral, fontFamily: 'BeVietnamPro')),
+        Text(val,
+            style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: AppColors.neutral,
+                fontFamily: 'BeVietnamPro')),
       ],
     );
   }
@@ -641,7 +701,8 @@ class _SummaryBox extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(
+              color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
